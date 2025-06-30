@@ -1,0 +1,21 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "location": {
+      "value": "japaneast"
+    },
+    "environmentName": {
+      "value": "prod"
+    },
+    "repositoryUrl": {
+      "value": "https://github.com/nomhiro/shirono-qa"
+    },
+    "repositoryBranch": {
+      "value": "main"
+    },
+    "githubToken": {
+      "value": "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"
+    }
+  }
+}
