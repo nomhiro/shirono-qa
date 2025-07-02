@@ -1,28 +1,4 @@
 {
-  "routes": [
-    {
-      "route": "/api/*",
-      "allowedRoles": ["authenticated"]
-    },
-    {
-      "route": "/admin/*", 
-      "allowedRoles": ["authenticated"]
-    },
-    {
-      "route": "/questions/*",
-      "allowedRoles": ["authenticated"]
-    },
-    {
-      "route": "/",
-      "serve": "/index.html",
-      "statusCode": 200
-    },
-    {
-      "route": "/*",
-      "serve": "/index.html",
-      "statusCode": 200
-    }
-  ],
   "auth": {
     "identityProviders": {
       "github": {
@@ -35,7 +11,11 @@
   },
   "navigationFallback": {
     "rewrite": "/index.html",
-    "exclude": ["/api/*", "/_next/*", "/favicon.ico"]
+    "exclude": [
+      "/api/*",
+      "/_next/*",
+      "/favicon.ico"
+    ]
   },
   "mimeTypes": {
     ".json": "application/json"
