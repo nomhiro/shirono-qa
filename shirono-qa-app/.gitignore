@@ -43,3 +43,4 @@ next-env.d.ts
 
 # Bicep
 main.parameters.json
+swa_env.json*
