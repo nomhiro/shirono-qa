@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Box, Typography, CircularProgress } from '@mui/material'
 import AppHeader from '@/components/AppHeader'
@@ -70,11 +70,21 @@ export default function QuestionsPage() {
     }
   }
 
-  useEffect(() => {
-    checkAuth()
-  }, [checkAuth])
+  const loadQuestions = async () => {
+    try {
+      const response = await fetch('/api/questions')
+      if (response.ok) {
+        const data = await response.json()
+        setQuestions(data.questions || [])
+      }
+    } catch {
+      console.error('Failed to load questions')
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
-  const checkAuth = useCallback(async () => {
+  const checkAuth = async () => {
     try {
       const response = await fetch('/api/auth/me')
       if (!response.ok) {
@@ -87,19 +97,12 @@ export default function QuestionsPage() {
     } catch {
       router.push('/')
     }
-  }, [router, loadQuestions])
+  }
 
-  const loadQuestions = useCallback(async () => {
-    try {
-      const response = await fetch('/api/questions')
-      if (response.ok) {
-        const data = await response.json()
-        setQuestions(data.questions || [])
-      }
-    } catch {
-      console.error('Failed to load questions:', _error)
-    } finally {
-      setIsLoading(false)
+  useEffect(() => {
+    // クライアントサイドでのみ実行
+    if (typeof window !== 'undefined') {
+      checkAuth()
     }
   }, [])
 

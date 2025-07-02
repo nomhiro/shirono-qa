@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Box, Typography, CircularProgress } from '@mui/material'
 import FileUpload from '@/components/FileUpload'
@@ -16,11 +16,7 @@ export default function NewQuestionPage() {
   const [errors, setErrors] = useState<{ [key: string]: string }>({})
   const router = useRouter()
 
-  useEffect(() => {
-    checkAuth()
-  }, [checkAuth])
-
-  const checkAuth = useCallback(async () => {
+  const checkAuth = async () => {
     try {
       const response = await fetch('/api/auth/me')
       if (!response.ok) {
@@ -33,7 +29,13 @@ export default function NewQuestionPage() {
     } finally {
       setIsLoading(false)
     }
-  }, [router])
+  }
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      checkAuth()
+    }
+  }, [])
 
   const validateForm = () => {
     const newErrors: { [key: string]: string } = {}
