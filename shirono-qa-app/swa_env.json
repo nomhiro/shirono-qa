@@ -1,0 +1,62 @@
+[
+  {
+    "name": "COSMOS_DB_CONNECTION_STRING",
+    "value": "AccountEndpoint=https://shirono-qa-prod-cosmos-3h4vj5av3j2ea.documents.azure.com:443/;AccountKey=EgxODRmfUsCZSpWNpo5RUiksGQOVuL8NyU2SoW55auBU9HuhOTZLR895qN3nICW2snik0uHdhOI3ACDbES2ErQ==;"
+  },
+  {
+    "name": "COSMOS_DB_DATABASE_NAME",
+    "value": "ShironoQA"
+  },
+  {
+    "name": "AZURE_STORAGE_CONNECTION_STRING",
+    "value": "DefaultEndpointsProtocol=https;AccountName=shironoqa3h4vj5av;AccountKey=XQy5bRGpj9dWWTT5w6G1iyAqdd99NwajB7Vr5BVYHQJEfk4JVDo51K+u41/Jq8AsxYJLQE8kCyEb+AStpst6Ig==;EndpointSuffix=core.windows.net"
+  },
+  {
+    "name": "AZURE_STORAGE_CONTAINER_NAME",
+    "value": "qa-attachments"
+  },
+  {
+    "name": "AZURE_OPENAI_ENDPOINT",
+    "value": "https://shirono-qa-prod-openai-3h4vj5av3j2ea.openai.azure.com/"
+  },
+  {
+    "name": "AZURE_OPENAI_API_KEY",
+    "value": "467cb82c0b7d45dfa029ccabca573885"
+  },
+  {
+    "name": "AZURE_OPENAI_DEPLOYMENT_NAME",
+    "value": "gpt-4.1-mini"
+  },
+  {
+    "name": "AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME",
+    "value": "text-embedding-3-large"
+  },
+  {
+    "name": "SMTP_HOST",
+    "value": "smtp.gmail.com"
+  },
+  {
+    "name": "SMTP_PORT",
+    "value": "465"
+  },
+  {
+    "name": "SMTP_USER",
+    "value": "nomhiro1204@gmail.com"
+  },
+  {
+    "name": "SMTP_PASSWORD",
+    "value": "grrv sddj gkua ovos"
+  },
+  {
+    "name": "SESSION_SECRET",
+    "value": "38ab2e826853b0cb9d4faca847205ee316149ed547b30d7b94cc5ab8be2bc9f4dfd5cd62cc4d6931084feec79d14db49499d320754996c4f97bdce372ce3d80f"
+  },
+  {
+    "name": "NEXTAUTH_URL",
+    "value": "http://localhost:3000"
+  },
+  {
+    "name": "NODE_ENV",
+    "value": "development"
+  }
+]
