@@ -106,7 +106,7 @@ class EmailService {
         html: template.html
       }
 
-      const result = await this.transporter.sendMail(mailOptions)
+      const _result = await this.transporter.sendMail(mailOptions)
       return true
     } catch (error) {
       console.error('Failed to send email:', error)

@@ -43,7 +43,6 @@ class BlobStorageService {
         access: 'blob' // パブリックアクセス（読み取り専用）
       })
 
-      console.log(`Blob container '${this.containerName}' initialized successfully`)
     } catch (error) {
       console.error('Failed to initialize blob container:', error)
       throw error

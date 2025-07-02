@@ -142,6 +142,23 @@ export default function AppHeader({ title, breadcrumbItems = [], onUserLoaded }:
                 className="w-5 h-5"
               />
             </a>
+            
+            {/* Azure Update情報サイトリンク */}
+            <a
+              href="https://azure.koudaiii.com/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-gray-400 hover:text-blue-500 transition-colors duration-200 p-1"
+              title="Azure Update情報"
+            >
+              <Image
+                src="/icons/azure-icon.svg"
+                alt="Azure"
+                width={20}
+                height={20}
+                className="w-5 h-5"
+              />
+            </a>
             <UserMenu user={user} />
           </div>
         </div>

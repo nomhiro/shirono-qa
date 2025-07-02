@@ -500,7 +500,6 @@ export async function getCommentsByAnswer(answerId: string): Promise<GetComments
     const query = 'SELECT * FROM c WHERE c.answerId = @answerId ORDER BY c.createdAt ASC'
     const parameters = [{ name: '@answerId', value: answerId }]
 
-    console.log('Querying comments for answer:', answerId)
     const comments = await cosmosService.queryItems<Comment>('comments', query, parameters)
 
     return {
