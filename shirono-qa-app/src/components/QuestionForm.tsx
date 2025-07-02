@@ -1,8 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { Question, QuestionPriority, CreateQuestionRequest } from '../types/question'
-import { createQuestion, updateQuestion } from '../lib/questions'
+import { Question, QuestionPriority } from '../types/question'
+import { updateQuestion } from '../lib/questions'
 
 interface QuestionFormProps {
   mode: 'create' | 'edit'
@@ -26,10 +26,10 @@ export default function QuestionForm({ mode, question, onSuccess, onCancel }: Qu
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     // Reset errors
     setErrors({})
-    
+
     // Validation
     const newErrors: { title?: string; content?: string } = {}
     if (!title.trim()) {
@@ -38,26 +38,20 @@ export default function QuestionForm({ mode, question, onSuccess, onCancel }: Qu
     if (!content.trim()) {
       newErrors.content = 'Content is required'
     }
-    
+
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors)
       return
     }
-    
+
     setIsLoading(true)
-    
+
     try {
       if (mode === 'create') {
-        const questionData: CreateQuestionRequest = {
-          title,
-          content,
-          priority,
-          attachments
-        }
-        
+
         // This component should not be used directly - user session required
         throw new Error('QuestionForm component is deprecated - use authenticated API routes instead')
-        
+
         if (result.success) {
           onSuccess()
         } else {
@@ -69,16 +63,16 @@ export default function QuestionForm({ mode, question, onSuccess, onCancel }: Qu
           content,
           priority
         }
-        
+
         const result = await updateQuestion(question!.id, updateData)
-        
+
         if (result.success) {
           onSuccess()
         } else {
           setErrors({ general: result.error || 'Failed to update question' })
         }
       }
-    } catch (error) {
+    } catch {
       setErrors({ general: 'An unexpected error occurred' })
     } finally {
       setIsLoading(false)
@@ -172,8 +166,8 @@ export default function QuestionForm({ mode, question, onSuccess, onCancel }: Qu
           disabled={isLoading}
           className="flex-1 bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
         >
-          {isLoading 
-            ? `${mode === 'create' ? 'Creating' : 'Updating'}...` 
+          {isLoading
+            ? `${mode === 'create' ? 'Creating' : 'Updating'}...`
             : `${mode === 'create' ? 'Create' : 'Update'} Question`
           }
         </button>

@@ -1,8 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { CreateCommentRequest } from '../types/answer'
-import { createComment } from '../lib/answers'
 
 interface CommentFormProps {
   questionId: string
@@ -11,7 +9,7 @@ interface CommentFormProps {
   onCancel: () => void
 }
 
-export default function CommentForm({ questionId, answerId, onSuccess, onCancel }: CommentFormProps) {
+export default function CommentForm({ answerId, onSuccess, onCancel }: CommentFormProps) {
   const [content, setContent] = useState('')
   const [attachments, setAttachments] = useState<File[]>([])
   const [errors, setErrors] = useState<{ content?: string; general?: string }>({})
@@ -27,37 +25,32 @@ export default function CommentForm({ questionId, answerId, onSuccess, onCancel 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     // Reset errors
     setErrors({})
-    
+
     // Validation
     const newErrors: { content?: string } = {}
     if (!content.trim()) {
       newErrors.content = 'Comment is required'
     }
-    
+
     if (isOverLimit) {
       newErrors.content = 'Comment is too long'
     }
-    
+
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors)
       return
     }
-    
+
     setIsLoading(true)
-    
+
     try {
-      const commentData: CreateCommentRequest = {
-        content,
-        answerId,
-        attachments
-      }
-      
+
       // Note: This component is deprecated, use the main question detail page instead
       throw new Error('CommentForm component is deprecated. Use question detail page for posting comments.')
-      
+
       if (result.success) {
         onSuccess()
         setContent('')
@@ -65,7 +58,7 @@ export default function CommentForm({ questionId, answerId, onSuccess, onCancel 
       } else {
         setErrors({ general: result.error || 'Failed to create comment' })
       }
-    } catch (error) {
+    } catch {
       setErrors({ general: 'An unexpected error occurred' })
     } finally {
       setIsLoading(false)
@@ -83,9 +76,8 @@ export default function CommentForm({ questionId, answerId, onSuccess, onCancel 
           value={content}
           onChange={(e) => setContent(e.target.value)}
           rows={3}
-          className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 ${
-            isOverLimit ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''
-          }`}
+          className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 ${isOverLimit ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''
+            }`}
           maxLength={maxLength + 100} // Allow typing a bit over limit for better UX
           placeholder="Add your comment..."
         />

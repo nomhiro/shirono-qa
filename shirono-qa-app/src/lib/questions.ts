@@ -149,7 +149,7 @@ export async function updateQuestion(
         error: 'Question not found'
       }
     }
-    
+
     const existingQuestion = getResult.question
 
     // Update question
@@ -192,9 +192,9 @@ export async function getQuestion(questionId: string): Promise<{ success: boolea
     // groupIdなしで検索（複数パーティション検索）
     const sqlQuery = 'SELECT * FROM c WHERE c.id = @id'
     const parameters = [{ name: '@id', value: questionId }]
-    
+
     const questions = await cosmosService.queryItems<Question>('questions', sqlQuery, parameters)
-    
+
     if (!questions || questions.length === 0) {
       return {
         success: false,
@@ -224,11 +224,11 @@ export async function getQuestion(questionId: string): Promise<{ success: boolea
 export async function getQuestions(query: GetQuestionsQuery): Promise<GetQuestionsResult> {
   try {
     const cosmosService = getCosmosService()
-    
+
     // Build query
     let sqlQuery = 'SELECT * FROM c'
-    const parameters: any[] = []
-    
+    const parameters: { name: string; value: unknown }[] = []
+
     // GroupIdフィルタを追加（管理者でない場合のみ）
     if (query.groupId) {
       sqlQuery += ' WHERE c.groupId = @groupId'
@@ -336,7 +336,7 @@ export async function updateQuestionTimestamp(questionId: string): Promise<{ suc
         error: 'Question not found'
       }
     }
-    
+
     const existingQuestion = getResult.question
 
     // Update only the updatedAt timestamp
@@ -367,7 +367,7 @@ export async function updateQuestionTimestamp(questionId: string): Promise<{ suc
 
 async function collectAttachmentUrls(questionId: string): Promise<string[]> {
   const attachmentUrls: string[] = []
-  
+
   try {
     // 質問の添付ファイル取得
     const questionResult = await getQuestion(questionId)
@@ -422,7 +422,7 @@ async function deleteBlobFiles(attachmentUrls: string[]): Promise<void> {
 
   // Blob Storage設定の確認
   try {
-    const blobService = getBlobStorageService()
+    getBlobStorageService()
     // Blob Serviceが利用可能かテスト
   } catch (error) {
     console.warn('Blob Storage not configured, skipping file deletion:', error)
@@ -433,9 +433,9 @@ async function deleteBlobFiles(attachmentUrls: string[]): Promise<void> {
   try {
     const blobService = getBlobStorageService()
     const result = await blobService.deleteFilesByUrls(attachmentUrls)
-    
+
     console.log(`Blob deletion completed: ${result.success} successful, ${result.failed.length} failed`)
-    
+
     if (result.failed.length > 0) {
       console.warn('Failed to delete some blob files:', result.failed)
     }
@@ -457,7 +457,7 @@ export async function deleteQuestionWithRelatedData(questionId: string): Promise
         error: 'Question not found'
       }
     }
-    
+
     const existingQuestion = getResult.question
 
     console.log(`Deleting question ${questionId} and all related data...`)

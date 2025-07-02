@@ -38,7 +38,7 @@ export default function SimilarQuestions({
       } else {
         setError(result.error || 'Failed to load similar questions')
       }
-    } catch (err) {
+    } catch {
       setError('Failed to load similar questions')
     } finally {
       setLoading(false)

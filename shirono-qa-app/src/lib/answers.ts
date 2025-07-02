@@ -12,11 +12,11 @@ import {
   DeleteAnswerResult,
   DeleteCommentResult
 } from '../types/answer'
-import { 
-  createValidator, 
-  validateFiles, 
-  VALIDATION_LIMITS, 
-  ALLOWED_FILE_TYPES 
+import {
+  createValidator,
+  validateFiles,
+  VALIDATION_LIMITS,
+  ALLOWED_FILE_TYPES
 } from './validation'
 import { getCosmosService } from './cosmos'
 import { isAppError } from './errors'
@@ -139,11 +139,11 @@ export async function createAnswer(
 export async function getAnswerById(answerId: string): Promise<{ success: boolean; answer?: Answer; error?: string }> {
   try {
     const cosmosService = getCosmosService()
-    
+
     const query = 'SELECT * FROM c WHERE c.id = @id'
     const parameters = [{ name: '@id', value: answerId }]
     const answers = await cosmosService.queryItems<Answer>('answers', query, parameters)
-    
+
     if (!answers || answers.length === 0) {
       return {
         success: false,
@@ -170,21 +170,21 @@ export async function updateAnswer(
 ): Promise<UpdateAnswerResult> {
   try {
     const cosmosService = getCosmosService()
-    
+
     // Get existing answer
     const query = 'SELECT * FROM c WHERE c.id = @id'
     const parameters = [{ name: '@id', value: answerId }]
     const existingAnswers = await cosmosService.queryItems<Answer>('answers', query, parameters)
-    
+
     if (!existingAnswers || existingAnswers.length === 0) {
       return {
         success: false,
         error: 'Answer not found'
       }
     }
-    
+
     const existingAnswer = existingAnswers[0]
-    
+
     // Update answer
     const updatedAnswer: Answer = {
       ...existingAnswer,
@@ -192,9 +192,9 @@ export async function updateAnswer(
       ...(data.attachments !== undefined && { attachments: data.attachments }),
       updatedAt: new Date()
     }
-    
+
     const result = await cosmosService.updateItem('answers', answerId, updatedAnswer, existingAnswer.questionId)
-    
+
     return {
       success: true,
       answer: result
@@ -217,24 +217,24 @@ export async function updateAnswer(
 export async function deleteAnswer(answerId: string): Promise<DeleteAnswerResult> {
   try {
     const cosmosService = getCosmosService()
-    
+
     // Get existing answer to find questionId (partition key)
     const query = 'SELECT * FROM c WHERE c.id = @id'
     const parameters = [{ name: '@id', value: answerId }]
     const existingAnswers = await cosmosService.queryItems<Answer>('answers', query, parameters)
-    
+
     if (!existingAnswers || existingAnswers.length === 0) {
       return {
         success: false,
         error: 'Answer not found'
       }
     }
-    
+
     const existingAnswer = existingAnswers[0]
-    
+
     // Delete answer from Cosmos DB
     await cosmosService.deleteItem('answers', answerId, existingAnswer.questionId)
-    
+
     return {
       success: true
     }
@@ -263,11 +263,11 @@ export async function getAnswersByQuestion(questionId: string): Promise<GetAnswe
     }
 
     const cosmosService = getCosmosService()
-    
+
     // Cosmos DBから実際の回答を取得（投稿順）
     const query = 'SELECT * FROM c WHERE c.questionId = @questionId ORDER BY c.createdAt ASC'
     const parameters = [{ name: '@questionId', value: questionId }]
-    
+
     console.log('Querying answers for question:', questionId)
     const answers = await cosmosService.queryItems<Answer>('answers', query, parameters)
     console.log('Found answers:', answers.length)
@@ -347,11 +347,11 @@ export async function createComment(
 export async function getCommentById(commentId: string): Promise<{ success: boolean; comment?: Comment; error?: string }> {
   try {
     const cosmosService = getCosmosService()
-    
+
     const query = 'SELECT * FROM c WHERE c.id = @id'
     const parameters = [{ name: '@id', value: commentId }]
     const comments = await cosmosService.queryItems<Comment>('comments', query, parameters)
-    
+
     if (!comments || comments.length === 0) {
       return {
         success: false,
@@ -374,25 +374,25 @@ export async function getCommentById(commentId: string): Promise<{ success: bool
 
 export async function updateComment(
   commentId: string,
-  data: { content?: string; attachments?: any[] }
+  data: { content?: string; attachments?: unknown[] }
 ): Promise<{ success: boolean; comment?: Comment; error?: string }> {
   try {
     const cosmosService = getCosmosService()
-    
+
     // Get existing comment
     const query = 'SELECT * FROM c WHERE c.id = @id'
     const parameters = [{ name: '@id', value: commentId }]
     const existingComments = await cosmosService.queryItems<Comment>('comments', query, parameters)
-    
+
     if (!existingComments || existingComments.length === 0) {
       return {
         success: false,
         error: 'Comment not found'
       }
     }
-    
+
     const existingComment = existingComments[0]
-    
+
     // Update comment
     const updatedComment: Comment = {
       ...existingComment,
@@ -400,9 +400,9 @@ export async function updateComment(
       ...(data.attachments !== undefined && { attachments: data.attachments }),
       updatedAt: new Date()
     }
-    
+
     const result = await cosmosService.updateItem('comments', commentId, updatedComment, existingComment.questionId)
-    
+
     return {
       success: true,
       comment: result
@@ -425,24 +425,24 @@ export async function updateComment(
 export async function deleteComment(commentId: string): Promise<DeleteCommentResult> {
   try {
     const cosmosService = getCosmosService()
-    
+
     // Get existing comment to find questionId (partition key)
     const query = 'SELECT * FROM c WHERE c.id = @id'
     const parameters = [{ name: '@id', value: commentId }]
     const existingComments = await cosmosService.queryItems<Comment>('comments', query, parameters)
-    
+
     if (!existingComments || existingComments.length === 0) {
       return {
         success: false,
         error: 'Comment not found'
       }
     }
-    
+
     const existingComment = existingComments[0]
-    
+
     // Delete comment from Cosmos DB
     await cosmosService.deleteItem('comments', commentId, existingComment.questionId)
-    
+
     return {
       success: true
     }
@@ -471,11 +471,11 @@ export async function getCommentsByQuestion(questionId: string): Promise<GetComm
     }
 
     const cosmosService = getCosmosService()
-    
+
     // Cosmos DBから実際のコメントを取得（投稿順）
     const query = 'SELECT * FROM c WHERE c.questionId = @questionId ORDER BY c.createdAt ASC'
     const parameters = [{ name: '@questionId', value: questionId }]
-    
+
     console.log('Querying comments for question:', questionId)
     const comments = await cosmosService.queryItems<Comment>('comments', query, parameters)
     console.log('Found comments:', comments.length)
@@ -503,11 +503,11 @@ export async function getCommentsByAnswer(answerId: string): Promise<GetComments
     }
 
     const cosmosService = getCosmosService()
-    
+
     // Cosmos DBから実際のコメントを取得（answerId で絞り込み、投稿順）
     const query = 'SELECT * FROM c WHERE c.answerId = @answerId ORDER BY c.createdAt ASC'
     const parameters = [{ name: '@answerId', value: answerId }]
-    
+
     console.log('Querying comments for answer:', answerId)
     const comments = await cosmosService.queryItems<Comment>('comments', query, parameters)
     console.log('Found comments:', comments.length)

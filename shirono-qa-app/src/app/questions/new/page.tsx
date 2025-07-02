@@ -1,19 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Box, Typography, CircularProgress } from '@mui/material'
 import FileUpload from '@/components/FileUpload'
 import AppHeader from '@/components/AppHeader'
 
-interface User {
-  id: string
-  username: string
-  isAdmin: boolean
-}
-
 export default function NewQuestionPage() {
-  const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
@@ -25,23 +18,22 @@ export default function NewQuestionPage() {
 
   useEffect(() => {
     checkAuth()
-  }, [])
+  }, [checkAuth])
 
-  const checkAuth = async () => {
+  const checkAuth = useCallback(async () => {
     try {
       const response = await fetch('/api/auth/me')
       if (!response.ok) {
         router.push('/')
         return
       }
-      const userData = await response.json()
-      setUser(userData.user)
-    } catch (error) {
+      const _userData = await response.json()
+    } catch {
       router.push('/')
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [router])
 
   const validateForm = () => {
     const newErrors: { [key: string]: string } = {}
@@ -65,7 +57,7 @@ export default function NewQuestionPage() {
     files.forEach(file => {
       formData.append('files', file)
     })
-    
+
     // questionIdがある場合は追加
     if (questionId) {
       formData.append('questionId', questionId)
@@ -83,12 +75,12 @@ export default function NewQuestionPage() {
 
     const data = await response.json()
     console.log('File upload response:', data)
-    
+
     // アップロード成功時のレスポンス形式を確認
     if (data.success && data.files) {
-      return data.files.map((file: any) => file.blobUrl)
+      return data.files.map((file: { blobUrl: string }) => file.blobUrl)
     }
-    
+
     return data.urls || []
   }
 
@@ -128,7 +120,7 @@ export default function NewQuestionPage() {
         try {
           // ファイルをアップロード
           const uploadedFiles = await uploadFiles(questionId)
-          
+
           // アップロードされたファイル情報を準備
           const fileInfos = files.map((file, index) => ({
             fileName: file.name, // 元のファイル名
@@ -136,7 +128,7 @@ export default function NewQuestionPage() {
             size: file.size,
             contentType: file.type
           }))
-          
+
           console.log('File infos for attachment:', fileInfos)
 
           // 質問にファイルを関連付け
@@ -161,7 +153,7 @@ export default function NewQuestionPage() {
 
       // 質問詳細画面に遷移
       router.push(`/questions/${questionId}`)
-      
+
     } catch (error) {
       console.error('Question submission error:', error)
       setErrors({ submit: '質問の投稿に失敗しました' })
@@ -197,7 +189,7 @@ export default function NewQuestionPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <AppHeader breadcrumbItems={breadcrumbItems} />
-      
+
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
         <form onSubmit={handleSubmit} className="bg-white shadow rounded-lg p-6">
@@ -216,9 +208,8 @@ export default function NewQuestionPage() {
               id="title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-                errors.title ? 'border-red-500' : 'border-gray-300'
-              }`}
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 ${errors.title ? 'border-red-500' : 'border-gray-300'
+                }`}
               placeholder="質問のタイトルを入力してください"
             />
             {errors.title && (
@@ -235,9 +226,8 @@ export default function NewQuestionPage() {
               rows={8}
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-                errors.content ? 'border-red-500' : 'border-gray-300'
-              }`}
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 ${errors.content ? 'border-red-500' : 'border-gray-300'
+                }`}
               placeholder="質問の詳細を入力してください"
             />
             {errors.content && (

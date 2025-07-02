@@ -49,9 +49,10 @@ export async function getUsers(query?: GetUsersQuery): Promise<{
 }> {
   try {
     const cosmosService = getCosmosService()
-    
+
     let cosmosQuery = 'SELECT * FROM c'
-    const parameters: any[] = []
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const parameters: { name: string; value: any }[] = []
     const conditions: string[] = []
 
     if (query?.groupId) {
@@ -327,7 +328,7 @@ export async function getGroups(): Promise<{
 }> {
   try {
     const cosmosService = getCosmosService()
-    
+
     const groups = await cosmosService.queryItems<Group>(
       'groups',
       'SELECT * FROM c ORDER BY c.createdAt ASC',
@@ -531,7 +532,7 @@ export async function deleteGroup(groupId: string): Promise<{
 /**
  * ユーザーデータを検証
  */
-export function validateUserData(userData: UserCreateData | any, isUpdate = false): ValidationResult {
+export function validateUserData(userData: UserCreateData | Record<string, unknown>, isUpdate = false): ValidationResult {
   const errors: string[] = []
 
   // ユーザー名検証

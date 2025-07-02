@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Box, Typography, CircularProgress } from '@mui/material'
 import AppHeader from '@/components/AppHeader'
@@ -24,7 +24,7 @@ interface User {
 
 export default function QuestionsPage() {
   const [questions, setQuestions] = useState<Question[]>([])
-  const [user, setUser] = useState<User | null>(null)
+  const [_user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('すべて')
@@ -72,9 +72,9 @@ export default function QuestionsPage() {
 
   useEffect(() => {
     checkAuth()
-  }, [])
+  }, [checkAuth])
 
-  const checkAuth = async () => {
+  const checkAuth = useCallback(async () => {
     try {
       const response = await fetch('/api/auth/me')
       if (!response.ok) {
@@ -84,24 +84,24 @@ export default function QuestionsPage() {
       const userData = await response.json()
       setUser(userData.user)
       loadQuestions()
-    } catch (error) {
+    } catch {
       router.push('/')
     }
-  }
+  }, [router, loadQuestions])
 
-  const loadQuestions = async () => {
+  const loadQuestions = useCallback(async () => {
     try {
       const response = await fetch('/api/questions')
       if (response.ok) {
         const data = await response.json()
         setQuestions(data.questions || [])
       }
-    } catch (error) {
-      console.error('Failed to load questions:', error)
+    } catch {
+      console.error('Failed to load questions:', _error)
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [])
 
   if (isLoading) {
     return (

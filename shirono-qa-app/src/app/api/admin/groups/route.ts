@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
   try {
     // Extract session token from cookies
     const sessionToken = request.cookies.get('session')?.value
-    
+
     if (!sessionToken) {
       return NextResponse.json(
         { error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
   try {
     // Extract session token from cookies
     const sessionToken = request.cookies.get('session')?.value
-    
+
     if (!sessionToken) {
       return NextResponse.json(
         { error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
     let body: CreateGroupRequest
     try {
       body = await request.json()
-    } catch (error) {
+    } catch {
       return NextResponse.json(
         { error: { code: 'INTERNAL_ERROR', message: 'Invalid JSON in request body' } },
         { status: 500 }

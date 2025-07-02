@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
 import Breadcrumb, { BreadcrumbItem } from './Breadcrumb'
@@ -25,11 +25,7 @@ export default function AppHeader({ title, breadcrumbItems = [] }: AppHeaderProp
   const router = useRouter()
   const pathname = usePathname()
 
-  useEffect(() => {
-    checkAuth()
-  }, [])
-
-  const checkAuth = async () => {
+  const checkAuth = useCallback(async () => {
     try {
       const response = await fetch('/api/auth/me')
       if (!response.ok) {
@@ -38,12 +34,16 @@ export default function AppHeader({ title, breadcrumbItems = [] }: AppHeaderProp
       }
       const userData = await response.json()
       setUser(userData.user)
-    } catch (error) {
+    } catch {
       router.push('/')
     } finally {
       setLoading(false)
     }
-  }
+  }, [router])
+
+  useEffect(() => {
+    checkAuth()
+  }, [checkAuth])
 
   // 自動的にパンくずリストを生成
   const generateBreadcrumbs = (): BreadcrumbItem[] => {

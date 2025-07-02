@@ -1,4 +1,4 @@
-import { BlobServiceClient, ContainerClient, BlobClient } from '@azure/storage-blob'
+import { BlobServiceClient, ContainerClient } from '@azure/storage-blob'
 import { Readable } from 'stream'
 
 interface BlobConfig {
@@ -191,7 +191,7 @@ class BlobStorageService {
     try {
       const blobClient = this.containerClient.getBlobClient(fileName)
       const downloadResponse = await blobClient.download()
-      
+
       if (!downloadResponse.readableStreamBody) {
         throw new Error('Failed to get file stream')
       }
@@ -237,8 +237,8 @@ class BlobStorageService {
         metadata: decodedMetadata,
         lastModified: properties.lastModified
       }
-    } catch (error: any) {
-      if (error.statusCode === 404) {
+    } catch (error) {
+      if ((error as { statusCode?: number }).statusCode === 404) {
         return { exists: false }
       }
       console.error('Failed to get file info:', error)
@@ -254,8 +254,8 @@ class BlobStorageService {
       const blobClient = this.containerClient.getBlobClient(fileName)
       await blobClient.delete()
       return true
-    } catch (error: any) {
-      if (error.statusCode === 404) {
+    } catch (error) {
+      if ((error as { statusCode?: number }).statusCode === 404) {
         return false // ファイルが存在しない
       }
       console.error('Failed to delete file:', error)
@@ -363,7 +363,7 @@ class BlobStorageService {
   async generateDownloadUrl(fileName: string, expiresInMinutes = 60): Promise<string> {
     try {
       const blobClient = this.containerClient.getBlobClient(fileName)
-      
+
       // SAS Token生成（実際の実装では適切な権限設定が必要）
       const sasUrl = await blobClient.generateSasUrl({
         permissions: 'r', // 読み取り専用
@@ -399,12 +399,12 @@ class BlobStorageService {
     const timestamp = Date.now()
     const randomString = Math.random().toString(36).substring(2, 8)
     const extension = originalFileName.split('.').pop()
-    let nameWithoutExt = originalFileName.replace(/\.[^/.]+$/, '')
-    
+    const nameWithoutExt = originalFileName.replace(/\.[^/.]+$/, '')
+
     // Blob Storageでは日本語などの非ASCII文字がファイル名に含まれると問題が発生するため
     // ASCII文字以外を安全な文字に置換またはBase64エンコード
     const safeName = this.sanitizeFileName(nameWithoutExt)
-    
+
     return `${timestamp}-${randomString}-${safeName}.${extension}`
   }
 
@@ -425,7 +425,7 @@ class BlobStorageService {
    */
   generateBlobPath(type: 'question' | 'answer' | 'comment', questionId: string, itemId?: string): string {
     const basePath = `questions/${questionId}`
-    
+
     switch (type) {
       case 'question':
         return `${basePath}/question`
@@ -444,25 +444,25 @@ class BlobStorageService {
   async generateUniqueFileNameInPath(filePath: string, originalFileName: string): Promise<string> {
     let fileName = originalFileName
     let counter = 1
-    
+
     while (true) {
       const fullBlobName = `${filePath}/${fileName}`.replace(/\/+/g, '/')
       const blobClient = this.containerClient.getBlobClient(fullBlobName)
-      
+
       try {
         const exists = await blobClient.exists()
         if (!exists) {
           return fileName
         }
-        
+
         // ファイルが既に存在する場合は番号を付与
         const nameParts = originalFileName.split('.')
         const extension = nameParts.pop()
         const baseName = nameParts.join('.')
         fileName = `${baseName}_${counter}.${extension}`
         counter++
-        
-      } catch (error) {
+
+      } catch {
         // exists() でエラーが発生した場合は、ファイルが存在しないと仮定
         return fileName
       }
@@ -522,28 +522,28 @@ class BlobStorageService {
     if (blobUrl.startsWith('mock://')) {
       return blobUrl.replace('mock://blob/', '')
     }
-    
+
     try {
       const url = new URL(blobUrl)
       const pathParts = url.pathname.split('/').filter(part => part.length > 0)
-      
+
       // パスの最初の部分はコンテナ名、それ以降がファイルパス
       if (pathParts.length < 2) {
         throw new Error('Invalid blob URL structure')
       }
-      
+
       // コンテナ名（pathParts[0]）を除いたフルパスを取得
       const fullPath = pathParts.slice(1).join('/')
-      
+
       // URLデコードを適用
       let decodedPath = fullPath
       try {
         decodedPath = decodeURIComponent(fullPath)
-      } catch (decodeError) {
-        console.warn('Failed to decode full path:', fullPath, decodeError)
+      } catch {
+        console.warn('Failed to decode full path:', fullPath)
         // デコードに失敗した場合はそのまま使用
       }
-      
+
       console.log('Extracted full path from URL:', { blobUrl, fullPath: decodedPath })
       return decodedPath
     } catch (error) {

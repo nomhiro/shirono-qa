@@ -3,14 +3,12 @@
 import React, { useState } from 'react'
 import {
   Box,
-  Typography,
   List,
   ListItem,
   ListItemIcon,
   ListItemText,
   ListItemSecondaryAction,
   IconButton,
-  Chip,
   Alert,
   CircularProgress,
 } from '@mui/material'
@@ -43,7 +41,7 @@ export default function AttachmentList({ attachments }: AttachmentListProps) {
 
   const getFileIcon = (fileName: string) => {
     const extension = fileName.split('.').pop()?.toLowerCase()
-    
+
     switch (extension) {
       case 'jpg':
       case 'jpeg':
@@ -84,7 +82,7 @@ export default function AttachmentList({ attachments }: AttachmentListProps) {
 
   const handleDownload = async (attachment: Attachment) => {
     console.log('Download request for attachment:', attachment)
-    
+
     setDownloadingFiles(prev => new Set(prev).add(attachment.fileName))
     setErrors(prev => {
       const newErrors = { ...prev }
@@ -111,19 +109,19 @@ export default function AttachmentList({ attachments }: AttachmentListProps) {
 
       // Get file blob
       const blob = await response.blob()
-      
+
       // Create download link
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
       link.download = attachment.fileName
       link.style.display = 'none'
-      
+
       // Trigger download
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
-      
+
       // Clean up
       URL.revokeObjectURL(url)
 
@@ -154,12 +152,12 @@ export default function AttachmentList({ attachments }: AttachmentListProps) {
             <ListItemIcon>
               {getFileIcon(attachment.fileName)}
             </ListItemIcon>
-            
+
             <ListItemText
               primary={attachment.fileName}
               secondary={`${getFileTypeLabel(attachment.fileName)} • ${formatFileSize(attachment.fileSize)}`}
             />
-            
+
             <ListItemSecondaryAction>
               <IconButton
                 edge="end"

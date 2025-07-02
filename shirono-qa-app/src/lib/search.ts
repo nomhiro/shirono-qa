@@ -5,11 +5,9 @@ import {
   SimilarQuestionsResult,
   AutoTagResult,
   SearchSuggestionsResult,
-  SearchSortField,
-  VectorSearchQuery,
-  VectorSearchResult
+  SearchSortField
 } from '../types/search'
-import { Question, QuestionStatus, QuestionPriority } from '../types/question'
+import { Question } from '../types/question'
 import { embedText, generateTags } from './openai'
 import { getCosmosService } from './cosmos'
 
@@ -24,60 +22,60 @@ export async function searchQuestions(query: SearchQuery): Promise<SearchRespons
     }
 
     const cosmosService = getCosmosService()
-    
+
     // Build SQL query for Cosmos DB
     let sqlQuery = 'SELECT * FROM c'
-    const parameters: any[] = []
+    const parameters: { name: string; value: unknown }[] = []
     const searchTerm = query.q.toLowerCase()
-    
+
     // Add search conditions
-    let whereConditions: string[] = []
-    
+    const whereConditions: string[] = []
+
     // Full text search
     whereConditions.push('(CONTAINS(LOWER(c.title), @searchTerm) OR CONTAINS(LOWER(c.content), @searchTerm) OR ARRAY_CONTAINS(c.tags, @searchTerm, true))')
     parameters.push({ name: '@searchTerm', value: searchTerm })
-    
+
     // Apply filters
     if (query.status) {
       whereConditions.push('c.status = @status')
       parameters.push({ name: '@status', value: query.status })
     }
-    
+
     if (query.priority) {
       whereConditions.push('c.priority = @priority')
       parameters.push({ name: '@priority', value: query.priority })
     }
-    
+
     if (query.authorId) {
       whereConditions.push('c.authorId = @authorId')
       parameters.push({ name: '@authorId', value: query.authorId })
     }
-    
+
     if (query.groupId) {
       whereConditions.push('c.groupId = @groupId')
       parameters.push({ name: '@groupId', value: query.groupId })
     }
-    
+
     // Date filtering
     if (query.dateFrom) {
       whereConditions.push('c.createdAt >= @dateFrom')
       parameters.push({ name: '@dateFrom', value: query.dateFrom.toISOString() })
     }
-    
+
     if (query.dateTo) {
       whereConditions.push('c.createdAt <= @dateTo')
       parameters.push({ name: '@dateTo', value: query.dateTo.toISOString() })
     }
-    
+
     // Build final query
     if (whereConditions.length > 0) {
       sqlQuery += ' WHERE ' + whereConditions.join(' AND ')
     }
-    
+
     // Add sorting
     const sortBy = query.sortBy || SearchSortField.RELEVANCE
     const sortOrder = query.sortOrder || 'desc'
-    
+
     switch (sortBy) {
       case SearchSortField.CREATED_AT:
         sqlQuery += ` ORDER BY c.createdAt ${sortOrder.toUpperCase()}`
@@ -93,10 +91,10 @@ export async function searchQuestions(query: SearchQuery): Promise<SearchRespons
         // For relevance, use created date as fallback
         sqlQuery += ` ORDER BY c.createdAt ${sortOrder.toUpperCase()}`
     }
-    
+
     // Execute query
     const questions = await cosmosService.queryItems<Question>('questions', sqlQuery, parameters)
-    
+
     // Calculate relevance scores and create search results
     const searchResults: SearchResult[] = questions.map(question => {
       let score = 0
@@ -128,7 +126,7 @@ export async function searchQuestions(query: SearchQuery): Promise<SearchRespons
         snippet: generateSnippet(question.content, searchTerm)
       }
     })
-    
+
     // If sorting by relevance, sort by score
     if (sortBy === SearchSortField.RELEVANCE) {
       searchResults.sort((a, b) => {
@@ -172,18 +170,18 @@ export async function findSimilarQuestions(
     // Generate embedding for the query
     const queryVector = await embedText(queryText)
     const cosmosService = getCosmosService()
-    
+
     // Get all questions except the excluded one
     let sqlQuery = 'SELECT * FROM c'
-    const parameters: any[] = []
-    
+    const parameters: { name: string; value: unknown }[] = []
+
     if (excludeQuestionId) {
       sqlQuery += ' WHERE c.id != @excludeId'
       parameters.push({ name: '@excludeId', value: excludeQuestionId })
     }
-    
+
     const questions = await cosmosService.queryItems<Question>('questions', sqlQuery, parameters)
-    
+
     // Calculate similarity for each question
     const similarQuestions = await Promise.all(
       questions.map(async (question) => {
@@ -191,16 +189,16 @@ export async function findSimilarQuestions(
           // Generate embedding for the question
           const questionText = question.title + ' ' + question.content
           const questionVector = await embedText(questionText)
-          
+
           // Calculate similarity
           const similarity = calculateSimilarity(queryVector, questionVector)
-          
+
           // Get answer count from answers collection
           const answerQuery = 'SELECT VALUE COUNT(1) FROM c WHERE c.questionId = @questionId'
           const answerParams = [{ name: '@questionId', value: question.id }]
           const answerCountResult = await cosmosService.queryItems<number>('answers', answerQuery, answerParams)
           const answersCount = answerCountResult[0] || 0
-          
+
           return {
             id: question.id,
             title: question.title,
@@ -227,7 +225,7 @@ export async function findSimilarQuestions(
         }
       })
     )
-    
+
     // Filter by threshold and sort by similarity
     const filteredQuestions = similarQuestions
       .filter(q => q.similarity >= 0.7) // Filter by threshold
@@ -257,10 +255,10 @@ export async function generateAutoTags(title: string, content: string): Promise<
     }
 
     const result = await generateTags(title, content)
-    
+
     // Limit to 5 tags maximum
     const limitedTags = result.tags.slice(0, 5)
-    
+
     return {
       success: true,
       tags: limitedTags,
@@ -285,7 +283,7 @@ export async function getSearchSuggestions(query: string): Promise<SearchSuggest
     }
 
     const cosmosService = getCosmosService()
-    
+
     // Get suggestions from existing question titles and tags
     const sqlQuery = `
       SELECT DISTINCT c.title, c.tags 
@@ -294,17 +292,17 @@ export async function getSearchSuggestions(query: string): Promise<SearchSuggest
       ORDER BY c.createdAt DESC
     `
     const parameters = [{ name: '@query', value: query.toLowerCase() }]
-    
+
     const results = await cosmosService.queryItems<{ title: string; tags: string[] }>('questions', sqlQuery, parameters)
-    
+
     const suggestions: string[] = []
-    
+
     // Add matching titles
     results.forEach(result => {
       if (result.title.toLowerCase().includes(query.toLowerCase())) {
         suggestions.push(result.title)
       }
-      
+
       // Add matching tags
       result.tags.forEach(tag => {
         if (tag.toLowerCase().includes(query.toLowerCase()) && !suggestions.includes(tag)) {
@@ -312,7 +310,7 @@ export async function getSearchSuggestions(query: string): Promise<SearchSuggest
         }
       })
     })
-    
+
     // Add typo corrections
     const typoCorrection = generateSearchSuggestions(query)
     typoCorrection.forEach(correction => {
@@ -320,7 +318,7 @@ export async function getSearchSuggestions(query: string): Promise<SearchSuggest
         suggestions.push(correction)
       }
     })
-    
+
     return {
       success: true,
       suggestions: suggestions.slice(0, 10)
@@ -351,7 +349,7 @@ export function calculateSimilarity(vector1: number[], vector2: number[]): numbe
   }
 
   const magnitude = Math.sqrt(norm1) * Math.sqrt(norm2)
-  
+
   if (magnitude === 0) {
     return 0
   }
@@ -379,7 +377,7 @@ function generateHighlights(question: Question, terms: string[]) {
   const highlights = []
 
   // Check title for highlights
-  const titleHighlights = terms.filter(term => 
+  const titleHighlights = terms.filter(term =>
     question.title.toLowerCase().includes(term.toLowerCase())
   )
   if (titleHighlights.length > 0) {
@@ -390,7 +388,7 @@ function generateHighlights(question: Question, terms: string[]) {
   }
 
   // Check content for highlights
-  const contentHighlights = terms.filter(term => 
+  const contentHighlights = terms.filter(term =>
     question.content.toLowerCase().includes(term.toLowerCase())
   )
   if (contentHighlights.length > 0) {
@@ -406,15 +404,15 @@ function generateHighlights(question: Question, terms: string[]) {
 
 function generateSnippet(content: string, searchTerm?: string, maxLength = 200): string {
   if (!searchTerm) {
-    return content.length > maxLength 
+    return content.length > maxLength
       ? content.substring(0, maxLength) + '...'
       : content
   }
 
   const termIndex = content.toLowerCase().indexOf(searchTerm.toLowerCase())
-  
+
   if (termIndex === -1) {
-    return content.length > maxLength 
+    return content.length > maxLength
       ? content.substring(0, maxLength) + '...'
       : content
   }
@@ -422,12 +420,12 @@ function generateSnippet(content: string, searchTerm?: string, maxLength = 200):
   // Center the snippet around the search term
   const start = Math.max(0, termIndex - maxLength / 2)
   const end = Math.min(content.length, start + maxLength)
-  
+
   let snippet = content.substring(start, end)
-  
+
   if (start > 0) snippet = '...' + snippet
   if (end < content.length) snippet = snippet + '...'
-  
+
   return snippet
 }
 
@@ -446,7 +444,7 @@ function generateSearchSuggestions(query: string): string[] {
   }
 
   const suggestions: string[] = []
-  
+
   // Check for typos
   const correction = typoMap[query.toLowerCase()]
   if (correction) {

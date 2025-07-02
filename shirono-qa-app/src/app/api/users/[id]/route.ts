@@ -9,7 +9,7 @@ export async function GET(
   try {
     // paramsを待機
     const params = await context.params
-    
+
     // セッション検証
     const sessionToken = request.cookies.get('session')?.value
     if (!sessionToken) {
@@ -39,11 +39,9 @@ export async function GET(
     }
 
     // パスワードハッシュを除外してレスポンス
-    const { passwordHash, ...userWithoutPassword } = user
-
     return NextResponse.json({
       success: true,
-      user: userWithoutPassword
+      user
     })
 
   } catch (error) {

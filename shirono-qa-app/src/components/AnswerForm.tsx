@@ -1,8 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { Answer, CreateAnswerRequest } from '../types/answer'
-import { createAnswer, updateAnswer } from '../lib/answers'
+import { Answer } from '../types/answer'
+import { updateAnswer } from '../lib/answers'
 
 interface AnswerFormProps {
   mode: 'create' | 'edit'
@@ -12,7 +12,7 @@ interface AnswerFormProps {
   onCancel: () => void
 }
 
-export default function AnswerForm({ mode, questionId, answer, onSuccess, onCancel }: AnswerFormProps) {
+export default function AnswerForm({ mode, answer, onSuccess, onCancel }: AnswerFormProps) {
   const [content, setContent] = useState(answer?.content || '')
   const [attachments, setAttachments] = useState<File[]>([])
   const [errors, setErrors] = useState<{ content?: string; general?: string }>({})
@@ -25,33 +25,29 @@ export default function AnswerForm({ mode, questionId, answer, onSuccess, onCanc
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     // Reset errors
     setErrors({})
-    
+
     // Validation
     const newErrors: { content?: string } = {}
     if (!content.trim()) {
       newErrors.content = 'Content is required'
     }
-    
+
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors)
       return
     }
-    
+
     setIsLoading(true)
-    
+
     try {
       if (mode === 'create') {
-        const answerData: CreateAnswerRequest = {
-          content,
-          attachments
-        }
-        
+
         // Note: This component is deprecated, use the main question detail page instead
         throw new Error('AnswerForm component is deprecated. Use question detail page for posting answers.')
-        
+
         if (result.success) {
           onSuccess()
         } else {
@@ -61,16 +57,16 @@ export default function AnswerForm({ mode, questionId, answer, onSuccess, onCanc
         const updateData = {
           content
         }
-        
+
         const result = await updateAnswer(answer!.id, updateData)
-        
+
         if (result.success) {
           onSuccess()
         } else {
           setErrors({ general: result.error || 'Failed to update answer' })
         }
       }
-    } catch (error) {
+    } catch {
       setErrors({ general: 'An unexpected error occurred' })
     } finally {
       setIsLoading(false)
@@ -141,8 +137,8 @@ export default function AnswerForm({ mode, questionId, answer, onSuccess, onCanc
           disabled={isLoading}
           className="flex-1 bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
         >
-          {isLoading 
-            ? 'Submitting...' 
+          {isLoading
+            ? 'Submitting...'
             : `${mode === 'create' ? 'Submit' : 'Update'} Answer`
           }
         </button>

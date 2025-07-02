@@ -9,16 +9,16 @@ export async function GET(
   try {
     // paramsを待機
     const params = await context.params
-    
+
     // 認証チェック
     const sessionToken = request.cookies.get('session')?.value
     if (!sessionToken) {
       return NextResponse.json(
-        { 
-          error: { 
-            code: 'UNAUTHORIZED', 
-            message: 'Authentication required' 
-          } 
+        {
+          error: {
+            code: 'UNAUTHORIZED',
+            message: 'Authentication required'
+          }
         },
         { status: 401 }
       )
@@ -27,11 +27,11 @@ export async function GET(
     const authResult = await validateSession(sessionToken)
     if (!authResult.valid || !authResult.user) {
       return NextResponse.json(
-        { 
-          error: { 
-            code: 'UNAUTHORIZED', 
-            message: 'Invalid session' 
-          } 
+        {
+          error: {
+            code: 'UNAUTHORIZED',
+            message: 'Invalid session'
+          }
         },
         { status: 401 }
       )
@@ -41,11 +41,11 @@ export async function GET(
     const result = await getQuestion(params.id)
     if (!result.success) {
       return NextResponse.json(
-        { 
-          error: { 
-            code: 'NOT_FOUND', 
-            message: 'Question not found' 
-          } 
+        {
+          error: {
+            code: 'NOT_FOUND',
+            message: 'Question not found'
+          }
         },
         { status: 404 }
       )
@@ -56,11 +56,11 @@ export async function GET(
     // グループベースアクセス制御
     if (!authResult.user.isAdmin && question.groupId !== authResult.user.groupId) {
       return NextResponse.json(
-        { 
-          error: { 
-            code: 'FORBIDDEN', 
-            message: 'Access denied' 
-          } 
+        {
+          error: {
+            code: 'FORBIDDEN',
+            message: 'Access denied'
+          }
         },
         { status: 403 }
       )
@@ -80,11 +80,11 @@ export async function GET(
   } catch (error) {
     console.error('GET /api/questions/[id] error:', error)
     return NextResponse.json(
-      { 
-        error: { 
-          code: 'INTERNAL_ERROR', 
-          message: 'Internal server error' 
-        } 
+      {
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: 'Internal server error'
+        }
       },
       { status: 500 }
     )
@@ -98,16 +98,16 @@ export async function PUT(
   try {
     // paramsを待機
     const params = await context.params
-    
+
     // 認証チェック
     const sessionToken = request.cookies.get('session')?.value
     if (!sessionToken) {
       return NextResponse.json(
-        { 
-          error: { 
-            code: 'UNAUTHORIZED', 
-            message: 'Authentication required' 
-          } 
+        {
+          error: {
+            code: 'UNAUTHORIZED',
+            message: 'Authentication required'
+          }
         },
         { status: 401 }
       )
@@ -116,11 +116,11 @@ export async function PUT(
     const authResult = await validateSession(sessionToken)
     if (!authResult.valid || !authResult.user) {
       return NextResponse.json(
-        { 
-          error: { 
-            code: 'UNAUTHORIZED', 
-            message: 'Invalid session' 
-          } 
+        {
+          error: {
+            code: 'UNAUTHORIZED',
+            message: 'Invalid session'
+          }
         },
         { status: 401 }
       )
@@ -130,11 +130,11 @@ export async function PUT(
     const questionResult = await getQuestion(params.id)
     if (!questionResult.success) {
       return NextResponse.json(
-        { 
-          error: { 
-            code: 'NOT_FOUND', 
-            message: 'Question not found' 
-          } 
+        {
+          error: {
+            code: 'NOT_FOUND',
+            message: 'Question not found'
+          }
         },
         { status: 404 }
       )
@@ -150,19 +150,19 @@ export async function PUT(
     const isAdmin = authResult.user.isAdmin
     const isAuthor = existingQuestion.authorId === authResult.user.id
     const isGroupMember = existingQuestion.groupId === authResult.user.groupId
-    
+
     // ステータス変更のみの場合は同じグループのユーザーも許可
     const isStatusOnlyUpdate = status !== undefined && title === undefined && content === undefined && priority === undefined
-    
+
     if (!isAdmin && !isAuthor && !(isGroupMember && isStatusOnlyUpdate)) {
       return NextResponse.json(
-        { 
-          error: { 
-            code: 'FORBIDDEN', 
-            message: isStatusOnlyUpdate 
+        {
+          error: {
+            code: 'FORBIDDEN',
+            message: isStatusOnlyUpdate
               ? 'Only the question author, group members, or admin can change question status'
-              : 'Only the question author or admin can update this question' 
-          } 
+              : 'Only the question author or admin can update this question'
+          }
         },
         { status: 403 }
       )
@@ -175,14 +175,14 @@ export async function PUT(
         content: content || existingQuestion.content,
         priority: priority || existingQuestion.priority
       })
-      
+
       if (!validation.valid) {
         return NextResponse.json(
-          { 
-            error: { 
-              code: 'VALIDATION_ERROR', 
-              message: validation.errors.join(', ') 
-            } 
+          {
+            error: {
+              code: 'VALIDATION_ERROR',
+              message: validation.errors.join(', ')
+            }
           },
           { status: 400 }
         )
@@ -190,7 +190,7 @@ export async function PUT(
     }
 
     // 質問更新
-    const updateData: any = {}
+    const updateData: Record<string, unknown> = {}
     if (title !== undefined) updateData.title = title
     if (content !== undefined) updateData.content = content
     if (priority !== undefined) updateData.priority = priority
@@ -199,11 +199,11 @@ export async function PUT(
     const result = await updateQuestion(params.id, updateData)
     if (!result.success) {
       return NextResponse.json(
-        { 
-          error: { 
-            code: 'INTERNAL_ERROR', 
-            message: result.error || 'Failed to update question' 
-          } 
+        {
+          error: {
+            code: 'INTERNAL_ERROR',
+            message: result.error || 'Failed to update question'
+          }
         },
         { status: 500 }
       )
@@ -217,11 +217,11 @@ export async function PUT(
   } catch (error) {
     console.error('PUT /api/questions/[id] error:', error)
     return NextResponse.json(
-      { 
-        error: { 
-          code: 'INTERNAL_ERROR', 
-          message: 'Internal server error' 
-        } 
+      {
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: 'Internal server error'
+        }
       },
       { status: 500 }
     )
@@ -235,16 +235,16 @@ export async function DELETE(
   try {
     // paramsを待機
     const params = await context.params
-    
+
     // 認証チェック
     const sessionToken = request.cookies.get('session')?.value
     if (!sessionToken) {
       return NextResponse.json(
-        { 
-          error: { 
-            code: 'UNAUTHORIZED', 
-            message: 'Authentication required' 
-          } 
+        {
+          error: {
+            code: 'UNAUTHORIZED',
+            message: 'Authentication required'
+          }
         },
         { status: 401 }
       )
@@ -253,11 +253,11 @@ export async function DELETE(
     const authResult = await validateSession(sessionToken)
     if (!authResult.valid || !authResult.user) {
       return NextResponse.json(
-        { 
-          error: { 
-            code: 'UNAUTHORIZED', 
-            message: 'Invalid session' 
-          } 
+        {
+          error: {
+            code: 'UNAUTHORIZED',
+            message: 'Invalid session'
+          }
         },
         { status: 401 }
       )
@@ -267,26 +267,24 @@ export async function DELETE(
     const questionResult = await getQuestion(params.id)
     if (!questionResult.success) {
       return NextResponse.json(
-        { 
-          error: { 
-            code: 'NOT_FOUND', 
-            message: 'Question not found' 
-          } 
+        {
+          error: {
+            code: 'NOT_FOUND',
+            message: 'Question not found'
+          }
         },
         { status: 404 }
       )
     }
 
-    const existingQuestion = questionResult.question!
-
     // 権限チェック：管理者のみ
     if (!authResult.user.isAdmin) {
       return NextResponse.json(
-        { 
-          error: { 
-            code: 'FORBIDDEN', 
-            message: 'Only administrators can delete questions' 
-          } 
+        {
+          error: {
+            code: 'FORBIDDEN',
+            message: 'Only administrators can delete questions'
+          }
         },
         { status: 403 }
       )
@@ -296,11 +294,11 @@ export async function DELETE(
     const result = await deleteQuestion(params.id)
     if (!result.success) {
       return NextResponse.json(
-        { 
-          error: { 
-            code: 'INTERNAL_ERROR', 
-            message: result.error || 'Failed to delete question' 
-          } 
+        {
+          error: {
+            code: 'INTERNAL_ERROR',
+            message: result.error || 'Failed to delete question'
+          }
         },
         { status: 500 }
       )
@@ -314,11 +312,11 @@ export async function DELETE(
   } catch (error) {
     console.error('DELETE /api/questions/[id] error:', error)
     return NextResponse.json(
-      { 
-        error: { 
-          code: 'INTERNAL_ERROR', 
-          message: 'Internal server error' 
-        } 
+      {
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: 'Internal server error'
+        }
       },
       { status: 500 }
     )

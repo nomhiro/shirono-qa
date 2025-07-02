@@ -15,10 +15,10 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     // Reset errors
     setErrors({})
-    
+
     // Validation
     const newErrors: { username?: string; password?: string } = {}
     if (!username.trim()) {
@@ -27,23 +27,23 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
     if (!password.trim()) {
       newErrors.password = 'Password is required'
     }
-    
+
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors)
       return
     }
-    
+
     setIsLoading(true)
-    
+
     try {
       const result = await login(username, password)
-      
+
       if (result.success) {
         onSuccess()
       } else {
         setErrors({ general: result.error || 'Login failed' })
       }
-    } catch (error) {
+    } catch {
       setErrors({ general: 'An unexpected error occurred' })
     } finally {
       setIsLoading(false)
@@ -67,7 +67,7 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
           <p className="mt-1 text-sm text-red-600">{errors.username}</p>
         )}
       </div>
-      
+
       <div>
         <label htmlFor="password" className="block text-sm font-medium text-gray-700">
           Password
@@ -83,11 +83,11 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
           <p className="mt-1 text-sm text-red-600">{errors.password}</p>
         )}
       </div>
-      
+
       {errors.general && (
         <p className="text-sm text-red-600">{errors.general}</p>
       )}
-      
+
       <button
         type="submit"
         disabled={isLoading}

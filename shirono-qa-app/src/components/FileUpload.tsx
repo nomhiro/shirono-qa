@@ -12,7 +12,6 @@ import {
   IconButton,
   LinearProgress,
   Alert,
-  Chip,
 } from '@mui/material'
 import {
   CloudUpload as CloudUploadIcon,
@@ -21,6 +20,7 @@ import {
   Image as ImageIcon,
 } from '@mui/icons-material'
 import { useFileUpload } from '@/hooks/useFileUpload'
+import Image from 'next/image'
 
 interface FileUploadProps {
   onFilesChange: (files: File[]) => void
@@ -28,8 +28,8 @@ interface FileUploadProps {
   accept?: string
 }
 
-export default function FileUpload({ 
-  onFilesChange, 
+export default function FileUpload({
+  onFilesChange,
   maxFiles = 5,
   accept = '.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.jpg,.jpeg,.png,.gif'
 }: FileUploadProps) {
@@ -40,7 +40,6 @@ export default function FileUpload({
     isUploading,
     addFile,
     removeFile,
-    clearFiles,
   } = useFileUpload()
 
   const [isDragOver, setIsDragOver] = useState(false)
@@ -60,7 +59,7 @@ export default function FileUpload({
   const handleDrop = useCallback((event: React.DragEvent) => {
     event.preventDefault()
     setIsDragOver(false)
-    
+
     const droppedFiles = Array.from(event.dataTransfer.files)
     droppedFiles.forEach(file => addFile(file))
   }, [addFile])
@@ -131,12 +130,12 @@ export default function FileUpload({
           または クリックしてファイルを選択
         </Typography>
         <Typography variant="caption" color="text.secondary">
-          {isMaxFilesReached 
-            ? '最大ファイル数に達しました' 
+          {isMaxFilesReached
+            ? '最大ファイル数に達しました'
             : `最大${maxFiles}ファイル、1ファイルあたり最大1GB`
           }
         </Typography>
-        
+
         <input
           id="file-input"
           data-testid="file-input"
@@ -182,28 +181,28 @@ export default function FileUpload({
                 <Box sx={{ display: 'flex', alignItems: 'center', mr: 2 }}>
                   {getFileIcon(fileData.file)}
                 </Box>
-                
+
                 {/* Image Preview */}
                 {previews[fileData.id] && (
                   <Box sx={{ mr: 2 }}>
-                    <img
+                    <Image
                       src={previews[fileData.id]}
                       alt={fileData.file.name}
+                      width={40}
+                      height={40}
                       style={{
-                        width: 40,
-                        height: 40,
                         objectFit: 'cover',
                         borderRadius: 4,
                       }}
                     />
                   </Box>
                 )}
-                
+
                 <ListItemText
                   primary={fileData.file.name}
                   secondary={`${fileData.file.type || 'unknown'} • ${formatFileSize(fileData.file.size)}`}
                 />
-                
+
                 <ListItemSecondaryAction>
                   <IconButton
                     edge="end"

@@ -11,9 +11,9 @@ interface SearchBoxProps {
   initialQuery?: string
 }
 
-export default function SearchBox({ 
-  onResults, 
-  enableFilters = false, 
+export default function SearchBox({
+  onResults,
+  enableFilters = false,
   placeholder = "Search questions...",
   initialQuery = ""
 }: SearchBoxProps) {
@@ -91,7 +91,7 @@ export default function SearchBox({
       }
 
       const result = await searchQuestions(searchParams)
-      
+
       if (result.success) {
         onResults(result)
       } else {
@@ -101,7 +101,7 @@ export default function SearchBox({
           error: result.error
         })
       }
-    } catch (err) {
+    } catch {
       setError('Search failed')
       onResults({
         success: false,
@@ -122,7 +122,7 @@ export default function SearchBox({
     const value = e.target.value
     setQuery(value)
     setSelectedSuggestionIndex(-1)
-    
+
     if (!value.trim()) {
       onResults(null)
     }
@@ -142,7 +142,7 @@ export default function SearchBox({
     switch (e.key) {
       case 'ArrowDown':
         e.preventDefault()
-        setSelectedSuggestionIndex(prev => 
+        setSelectedSuggestionIndex(prev =>
           prev < suggestions.length - 1 ? prev + 1 : prev
         )
         break
@@ -183,7 +183,7 @@ export default function SearchBox({
             placeholder={placeholder}
             className="w-full px-4 py-3 pr-12 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
           />
-          
+
           <button
             type="submit"
             disabled={loading}
@@ -221,9 +221,8 @@ export default function SearchBox({
               key={index}
               type="button"
               onClick={() => handleSuggestionClick(suggestion)}
-              className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-100 focus:outline-none focus:bg-gray-100 ${
-                index === selectedSuggestionIndex ? 'bg-gray-100 highlighted' : ''
-              }`}
+              className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-100 focus:outline-none focus:bg-gray-100 ${index === selectedSuggestionIndex ? 'bg-gray-100 highlighted' : ''
+                }`}
             >
               {suggestion}
             </button>

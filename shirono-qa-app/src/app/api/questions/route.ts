@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { validateSession } from '@/lib/auth'
 import { getQuestions, createQuestion, validateQuestionData } from '@/lib/questions'
 import { generateTags } from '@/lib/openai'
-import { QuestionStatus } from '@/types/question'
+import { QuestionStatus, QuestionPriority } from '@/types/question'
 
 export async function GET(request: NextRequest) {
   try {
@@ -10,11 +10,11 @@ export async function GET(request: NextRequest) {
     const sessionToken = request.cookies.get('session')?.value
     if (!sessionToken) {
       return NextResponse.json(
-        { 
-          error: { 
-            code: 'UNAUTHORIZED', 
-            message: 'Authentication required' 
-          } 
+        {
+          error: {
+            code: 'UNAUTHORIZED',
+            message: 'Authentication required'
+          }
         },
         { status: 401 }
       )
@@ -23,11 +23,11 @@ export async function GET(request: NextRequest) {
     const authResult = await validateSession(sessionToken)
     if (!authResult.valid || !authResult.user) {
       return NextResponse.json(
-        { 
-          error: { 
-            code: 'UNAUTHORIZED', 
-            message: 'Invalid session' 
-          } 
+        {
+          error: {
+            code: 'UNAUTHORIZED',
+            message: 'Invalid session'
+          }
         },
         { status: 401 }
       )
@@ -37,31 +37,39 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '10')
-    const status = searchParams.get('status')
-    const priority = searchParams.get('priority')
+    const statusParam = searchParams.get('status')
+    const priorityParam = searchParams.get('priority')
     const search = searchParams.get('search')
+
+    // 型変換
+    const status = statusParam && Object.values(QuestionStatus).includes(statusParam as QuestionStatus)
+      ? (statusParam as QuestionStatus)
+      : undefined
+    const priority = priorityParam && Object.values(QuestionPriority).includes(priorityParam as QuestionPriority)
+      ? (priorityParam as QuestionPriority)
+      : undefined
 
     // 質問データ取得
     const queryData = {
       page,
       limit,
       groupId: authResult.user.isAdmin ? undefined : authResult.user.groupId,
-      status: status as any,
-      priority: priority as any,
+      status,
+      priority,
       search: search || undefined
     }
-    
+
     console.log('Getting questions with query:', queryData)
     const result = await getQuestions(queryData)
     console.log('Questions result:', { success: result.success, count: result.questions?.length })
 
     if (!result.success) {
       return NextResponse.json(
-        { 
-          error: { 
-            code: 'INTERNAL_ERROR', 
-            message: result.error || 'Failed to fetch questions' 
-          } 
+        {
+          error: {
+            code: 'INTERNAL_ERROR',
+            message: result.error || 'Failed to fetch questions'
+          }
         },
         { status: 500 }
       )
@@ -76,11 +84,11 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('GET /api/questions error:', error)
     return NextResponse.json(
-      { 
-        error: { 
-          code: 'INTERNAL_ERROR', 
-          message: 'Internal server error' 
-        } 
+      {
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: 'Internal server error'
+        }
       },
       { status: 500 }
     )
@@ -93,11 +101,11 @@ export async function POST(request: NextRequest) {
     const sessionToken = request.cookies.get('session')?.value
     if (!sessionToken) {
       return NextResponse.json(
-        { 
-          error: { 
-            code: 'UNAUTHORIZED', 
-            message: 'Authentication required' 
-          } 
+        {
+          error: {
+            code: 'UNAUTHORIZED',
+            message: 'Authentication required'
+          }
         },
         { status: 401 }
       )
@@ -106,11 +114,11 @@ export async function POST(request: NextRequest) {
     const authResult = await validateSession(sessionToken)
     if (!authResult.valid || !authResult.user) {
       return NextResponse.json(
-        { 
-          error: { 
-            code: 'UNAUTHORIZED', 
-            message: 'Invalid session' 
-          } 
+        {
+          error: {
+            code: 'UNAUTHORIZED',
+            message: 'Invalid session'
+          }
         },
         { status: 401 }
       )
@@ -124,11 +132,11 @@ export async function POST(request: NextRequest) {
     const validation = validateQuestionData({ title, content, priority })
     if (!validation.valid) {
       return NextResponse.json(
-        { 
-          error: { 
-            code: 'VALIDATION_ERROR', 
-            message: validation.errors.join(', ') 
-          } 
+        {
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: validation.errors.join(', ')
+          }
         },
         { status: 400 }
       )
@@ -155,11 +163,11 @@ export async function POST(request: NextRequest) {
 
     if (!result.success) {
       return NextResponse.json(
-        { 
-          error: { 
-            code: 'INTERNAL_ERROR', 
-            message: result.error || 'Failed to create question' 
-          } 
+        {
+          error: {
+            code: 'INTERNAL_ERROR',
+            message: result.error || 'Failed to create question'
+          }
         },
         { status: 500 }
       )
@@ -178,11 +186,11 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('POST /api/questions error:', error)
     return NextResponse.json(
-      { 
-        error: { 
-          code: 'INTERNAL_ERROR', 
-          message: 'Internal server error' 
-        } 
+      {
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: 'Internal server error'
+        }
       },
       { status: 500 }
     )

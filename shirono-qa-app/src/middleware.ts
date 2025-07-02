@@ -1,10 +1,9 @@
 import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
 
-export function middleware(request: NextRequest) {
+export function middleware() {
   // Security headers for all responses
   const response = NextResponse.next()
-  
+
   // Set security headers
   response.headers.set('X-Frame-Options', 'DENY')
   response.headers.set('X-Content-Type-Options', 'nosniff')
@@ -14,7 +13,7 @@ export function middleware(request: NextRequest) {
     'Strict-Transport-Security',
     'max-age=63072000; includeSubDomains; preload'
   )
-  
+
   // Enhanced CSP for production
   const csp = [
     "default-src 'self'",
@@ -30,9 +29,9 @@ export function middleware(request: NextRequest) {
     "frame-ancestors 'none'",
     "upgrade-insecure-requests"
   ].join('; ')
-  
+
   response.headers.set('Content-Security-Policy', csp)
-  
+
   return response
 }
 

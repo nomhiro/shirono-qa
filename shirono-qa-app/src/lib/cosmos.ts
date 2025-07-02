@@ -91,8 +91,8 @@ class CosmosService {
       const container = await this.getContainer(containerId)
       const { resource } = await container.item(id, partitionKey || id).read<T>()
       return resource || null
-    } catch (error: any) {
-      if (error.code === 404) {
+    } catch (error) {
+      if ((error as { code?: number }).code === 404) {
         return null
       }
       console.error(`Failed to get item ${id} from ${containerId}:`, error)
@@ -131,9 +131,10 @@ class CosmosService {
    * クエリ実行
    */
   async queryItems<T>(
-    containerId: string, 
-    query: string, 
-    parameters: any[] = []
+    containerId: string,
+    query: string,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    parameters: { name: string; value: any }[] = []
   ): Promise<T[]> {
     try {
       const container = await this.getContainer(containerId)
@@ -141,7 +142,7 @@ class CosmosService {
         query,
         parameters
       }).fetchAll()
-      
+
       return resources
     } catch (error) {
       console.error(`Failed to query items in ${containerId}:`, error)
@@ -155,7 +156,8 @@ class CosmosService {
   async queryItemsWithPagination<T>(
     containerId: string,
     query: string,
-    parameters: any[] = [],
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    parameters: { name: string; value: any }[] = [],
     continuationToken?: string,
     maxItems = 20
   ): Promise<{ items: T[], continuationToken?: string }> {
@@ -170,7 +172,7 @@ class CosmosService {
       })
 
       const { resources, continuationToken: nextToken } = await queryIterator.fetchNext()
-      
+
       return {
         items: resources,
         continuationToken: nextToken
@@ -193,7 +195,7 @@ class CosmosService {
   ): Promise<T[]> {
     try {
       const container = await this.getContainer(containerId)
-      
+
       // Cosmos DBのベクター検索クエリ
       const query = `
         SELECT TOP ${limit} c.*, 
@@ -202,7 +204,7 @@ class CosmosService {
         WHERE VectorDistance(c.${vectorField}, @queryVector) > @threshold
         ORDER BY VectorDistance(c.${vectorField}, @queryVector) DESC
       `
-      
+
       const { resources } = await container.items.query<T>({
         query,
         parameters: [
@@ -210,7 +212,7 @@ class CosmosService {
           { name: '@threshold', value: similarityThreshold }
         ]
       }).fetchAll()
-      
+
       return resources
     } catch (error) {
       console.error(`Failed to execute vector query in ${containerId}:`, error)

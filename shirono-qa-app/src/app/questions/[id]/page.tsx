@@ -1,12 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import {
   Box,
   Typography,
   Button,
-  Card,
   CardContent,
   CardHeader,
   Chip,
@@ -17,7 +16,6 @@ import {
   MenuItem,
   Alert,
   CircularProgress,
-  Divider,
   Paper,
   Stack,
   Avatar,
@@ -31,9 +29,9 @@ import {
   DialogActions,
   DialogContentText,
 } from '@mui/material'
-import { 
-  Edit as EditIcon, 
-  Save as SaveIcon, 
+import {
+  Edit as EditIcon,
+  Save as SaveIcon,
   Cancel as CancelIcon,
   QuestionAnswer as QuestionIcon,
   QuestionAnswer as QuestionAnswerIcon,
@@ -78,15 +76,10 @@ export default function QuestionDetailPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [attachmentFiles, setAttachmentFiles] = useState<File[]>([])
   const [showFileUpload, setShowFileUpload] = useState(false)
-  const [userCache, setUserCache] = useState<{[key: string]: User}>({})
+  const [userCache, setUserCache] = useState<{ [key: string]: User }>({})
   const [loadingUsers, setLoadingUsers] = useState<Set<string>>(new Set())
 
-  useEffect(() => {
-    loadData()
-  }, [questionId])
-
-  // ユーザー情報を取得する関数
-  const fetchUserInfo = async (userId: string): Promise<User | null> => {
+  const fetchUserInfo = useCallback(async (userId: string): Promise<User | null> => {
     if (userCache[userId]) {
       return userCache[userId]
     }
@@ -107,7 +100,7 @@ export default function QuestionDetailPage() {
 
     try {
       setLoadingUsers(prev => new Set(prev).add(userId))
-      
+
       const response = await fetch(`/api/users/${userId}`)
       if (response.ok) {
         const userData = await response.json()
@@ -125,9 +118,9 @@ export default function QuestionDetailPage() {
         return newSet
       })
     }
-    
+
     return null
-  }
+  }, [userCache, loadingUsers])
 
   // ユーザー表示名を取得する関数
   const getUserDisplayName = (userId: string): string => {
@@ -143,17 +136,17 @@ export default function QuestionDetailPage() {
     return !!userCache[userId]
   }
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true)
-      
+
       // 認証チェック
       const response = await fetch('/api/auth/me')
       if (!response.ok) {
         router.push('/')
         return
       }
-      
+
       const userData = await response.json()
       setUser(userData.user)
 
@@ -163,13 +156,13 @@ export default function QuestionDetailPage() {
         setError('質問の読み込みに失敗しました')
         return
       }
-      
+
       const questionData = await questionResponse.json()
       if (!questionData.success) {
         setError(questionData.error?.message || '質問の読み込みに失敗しました')
         return
       }
-      
+
       const question = questionData.question
       setQuestion(question)
       setEditData({
@@ -179,8 +172,8 @@ export default function QuestionDetailPage() {
       })
 
       // 回答データ取得
-      const answersResponse = await fetch(`/api/questions/${questionId}/answers`)
-      let answersData: any = { success: false, answers: [] }
+      const answersResponse = await fetch(`/api/questions/${questionId}` + '/answers')
+      let answersData: { success: boolean; answers: Answer[] } = { success: false, answers: [] }
       if (answersResponse.ok) {
         answersData = await answersResponse.json()
         if (answersData.success) {
@@ -189,8 +182,8 @@ export default function QuestionDetailPage() {
       }
 
       // コメントデータ取得
-      const commentsResponse = await fetch(`/api/questions/${questionId}/comments`)
-      let commentsData: any = { success: false, comments: [] }
+      const commentsResponse = await fetch(`/api/questions/${questionId}` + '/comments')
+      let commentsData: { success: boolean; comments: Comment[] } = { success: false, comments: [] }
       if (commentsResponse.ok) {
         commentsData = await commentsResponse.json()
         if (commentsData.success) {
@@ -206,20 +199,24 @@ export default function QuestionDetailPage() {
       if (commentsData.success && commentsData.comments) {
         commentsData.comments.forEach((comment: Comment) => allUserIds.add(comment.authorId))
       }
-      
+
       // ユーザー情報を並行して取得
       if (allUserIds.size > 0) {
         const userPromises = Array.from(allUserIds).map(userId => fetchUserInfo(userId))
         await Promise.all(userPromises)
       }
-      
+
     } catch (err) {
       console.error('Error loading data:', err)
       setError('質問データの読み込みに失敗しました')
     } finally {
       setLoading(false)
     }
-  }
+  }, [questionId, router, fetchUserInfo])
+
+  useEffect(() => {
+    loadData()
+  }, [loadData])
 
   const handleEditToggle = () => {
     setIsEditing(!isEditing)
@@ -234,10 +231,10 @@ export default function QuestionDetailPage() {
 
   const handleSaveChanges = async () => {
     if (!question || !user) return
-    
+
     try {
       setSubmitting(true)
-      
+
       const response = await fetch(`/api/questions/${questionId}`, {
         method: 'PUT',
         headers: {
@@ -245,7 +242,7 @@ export default function QuestionDetailPage() {
         },
         body: JSON.stringify(editData)
       })
-      
+
       if (response.ok) {
         const data = await response.json()
         if (data.success) {
@@ -267,10 +264,10 @@ export default function QuestionDetailPage() {
 
   const handleStatusChange = async (newStatus: QuestionStatus) => {
     if (!question || !user) return
-    
+
     try {
       setSubmitting(true)
-      
+
       const response = await fetch(`/api/questions/${questionId}`, {
         method: 'PUT',
         headers: {
@@ -278,7 +275,7 @@ export default function QuestionDetailPage() {
         },
         body: JSON.stringify({ status: newStatus })
       })
-      
+
       if (response.ok) {
         const data = await response.json()
         if (data.success) {
@@ -302,25 +299,25 @@ export default function QuestionDetailPage() {
 
   const handleSubmitAnswer = async () => {
     if (!answerContent.trim() || !user) return
-    
+
     try {
       setSubmitting(true)
-      
+
       // FormDataを使用してファイルを送信
       const formData = new FormData()
       formData.append('content', answerContent.trim())
-      
+
       // ファイルを個別に追加
       attachmentFiles.forEach((file, index) => {
         formData.append(`file_${index}`, file)
       })
       formData.append('fileCount', attachmentFiles.length.toString())
-      
+
       const response = await fetch(`/api/questions/${questionId}/answers`, {
         method: 'POST',
         body: formData
       })
-      
+
       if (response.ok) {
         const data = await response.json()
         if (data.success) {
@@ -354,25 +351,25 @@ export default function QuestionDetailPage() {
 
   const handleSubmitComment = async () => {
     if (!answerContent.trim() || !user) return
-    
+
     try {
       setSubmitting(true)
-      
+
       // FormDataを使用してファイルを送信
       const formData = new FormData()
       formData.append('content', answerContent.trim())
-      
+
       // ファイルを個別に追加
       attachmentFiles.forEach((file, index) => {
         formData.append(`file_${index}`, file)
       })
       formData.append('fileCount', attachmentFiles.length.toString())
-      
+
       const response = await fetch(`/api/questions/${questionId}/comments`, {
         method: 'POST',
         body: formData
       })
-      
+
       if (response.ok) {
         const data = await response.json()
         if (data.success) {
@@ -406,14 +403,14 @@ export default function QuestionDetailPage() {
 
   const handleDeleteQuestion = async () => {
     if (!user?.isAdmin || !question) return
-    
+
     try {
       setSubmitting(true)
-      
+
       const response = await fetch(`/api/questions/${questionId}`, {
         method: 'DELETE',
       })
-      
+
       if (response.ok) {
         const data = await response.json()
         if (data.success) {
@@ -474,7 +471,7 @@ export default function QuestionDetailPage() {
   }
 
   const canEdit = user && question && (user.id === question.authorId || user.isAdmin)
-  const canChangeStatus = user && question && (user.id === question.authorId || user.isAdmin || user.groupId === question.groupId)
+  const _canChangeStatus = user && question && (user.id === question.authorId || user.isAdmin || user.groupId === question.groupId)
 
   if (loading) {
     return (
@@ -515,7 +512,7 @@ export default function QuestionDetailPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <AppHeader breadcrumbItems={breadcrumbItems} />
-      
+
       <Container maxWidth="lg" sx={{ py: 3 }}>
         <Grid container spacing={3}>
           {/* メインコンテンツ */}
@@ -545,7 +542,7 @@ export default function QuestionDetailPage() {
                       size="small"
                       icon={<FlagIcon />}
                     />
-                    
+
                     {/* 編集・削除ボタン */}
                     {canEdit && (
                       <>
@@ -685,21 +682,21 @@ export default function QuestionDetailPage() {
                     <AttachmentList attachments={question.attachments} />
                   </Box>
                 )}
-                
+
                 {/* 解決済みボタン - 質問直下の目立つ位置に配置 */}
                 {(() => {
                   const isAdmin = user?.isAdmin
                   const isGroupMember = user?.groupId === question.groupId
                   const canResolve = isAdmin || isGroupMember
                   const isResolved = question.status === QuestionStatus.RESOLVED
-                  
+
                   if (canResolve && !isResolved) {
                     return (
-                      <Paper 
-                        elevation={2} 
-                        sx={{ 
-                          mt: 3, 
-                          p: 2, 
+                      <Paper
+                        elevation={2}
+                        sx={{
+                          mt: 3,
+                          p: 2,
                           backgroundColor: 'success.50',
                           border: '1px solid',
                           borderColor: 'success.200'
@@ -721,8 +718,8 @@ export default function QuestionDetailPage() {
                             startIcon={<CheckIcon />}
                             onClick={() => handleStatusChange(QuestionStatus.RESOLVED)}
                             disabled={submitting}
-                            sx={{ 
-                              px: 4, 
+                            sx={{
+                              px: 4,
                               py: 1.5,
                               fontSize: '1rem',
                               fontWeight: 'bold',
@@ -739,7 +736,7 @@ export default function QuestionDetailPage() {
                       </Paper>
                     )
                   }
-                  
+
                   return null
                 })()}
 
@@ -747,14 +744,14 @@ export default function QuestionDetailPage() {
                 {(() => {
                   const isAdmin = user?.isAdmin
                   const isUnanswered = question.status === QuestionStatus.UNANSWERED
-                  
+
                   if (isAdmin && isUnanswered) {
                     return (
-                      <Paper 
-                        elevation={1} 
-                        sx={{ 
-                          mt: 2, 
-                          p: 2, 
+                      <Paper
+                        elevation={1}
+                        sx={{
+                          mt: 2,
+                          p: 2,
                           backgroundColor: 'info.50',
                           border: '1px solid',
                           borderColor: 'info.200'
@@ -776,8 +773,8 @@ export default function QuestionDetailPage() {
                             startIcon={<QuestionAnswerIcon />}
                             onClick={() => handleStatusChange(QuestionStatus.ANSWERED)}
                             disabled={submitting}
-                            sx={{ 
-                              px: 3, 
+                            sx={{
+                              px: 3,
                               py: 1,
                               fontSize: '0.9rem',
                               fontWeight: 'bold'
@@ -789,7 +786,7 @@ export default function QuestionDetailPage() {
                       </Paper>
                     )
                   }
-                  
+
                   return null
                 })()}
 
@@ -826,7 +823,7 @@ export default function QuestionDetailPage() {
                     <Paper key={`answer-${item.id}`} elevation={1} sx={{ mb: 2 }}>
                       <CardHeader
                         avatar={
-                          <Avatar sx={{ 
+                          <Avatar sx={{
                             bgcolor: userCache[item.authorId]?.isAdmin ? 'success.main' : 'primary.main'
                           }}>
                             {userCache[item.authorId]?.isAdmin ? <AdminIcon /> : <PersonIcon />}
@@ -869,13 +866,13 @@ export default function QuestionDetailPage() {
                     <Paper key={`comment-${item.id}`} elevation={0} sx={{ mb: 2, ml: 4, border: '1px solid', borderColor: 'divider' }}>
                       <CardHeader
                         avatar={
-                          <Avatar sx={{ 
-                            bgcolor: userCache[item.authorId]?.isAdmin ? 'success.main' : 'grey.400', 
-                            width: 32, 
-                            height: 32 
+                          <Avatar sx={{
+                            bgcolor: userCache[item.authorId]?.isAdmin ? 'success.main' : 'grey.400',
+                            width: 32,
+                            height: 32
                           }}>
-                            {userCache[item.authorId]?.isAdmin ? 
-                              <AdminIcon sx={{ fontSize: 18 }} /> : 
+                            {userCache[item.authorId]?.isAdmin ?
+                              <AdminIcon sx={{ fontSize: 18 }} /> :
                               <PersonIcon sx={{ fontSize: 18 }} />
                             }
                           </Avatar>
@@ -945,7 +942,7 @@ export default function QuestionDetailPage() {
                   }
                 />
               )}
-              
+
               <CardContent>
                 <TextField
                   fullWidth
@@ -1026,13 +1023,13 @@ export default function QuestionDetailPage() {
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button 
+          <Button
             onClick={() => setDeleteDialogOpen(false)}
             disabled={submitting}
           >
             キャンセル
           </Button>
-          <Button 
+          <Button
             onClick={handleDeleteQuestion}
             color="error"
             variant="contained"
