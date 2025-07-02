@@ -201,18 +201,7 @@ export default function FileUpload({
                 
                 <ListItemText
                   primary={fileData.file.name}
-                  secondary={
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
-                      <Chip
-                        label={fileData.file.type || 'unknown'}
-                        size="small"
-                        variant="outlined"
-                      />
-                      <span style={{ fontSize: '0.75rem', color: 'text.secondary' }}>
-                        {formatFileSize(fileData.file.size)}
-                      </span>
-                    </span>
-                  }
+                  secondary={`${fileData.file.type || 'unknown'} • ${formatFileSize(fileData.file.size)}`}
                 />
                 
                 <ListItemSecondaryAction>

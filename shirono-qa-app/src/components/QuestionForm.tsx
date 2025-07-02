@@ -55,8 +55,8 @@ export default function QuestionForm({ mode, question, onSuccess, onCancel }: Qu
           attachments
         }
         
-        // Mock authorId and groupId for testing
-        const result = await createQuestion(questionData, 'current-user-id', 'current-group-id')
+        // This component should not be used directly - user session required
+        throw new Error('QuestionForm component is deprecated - use authenticated API routes instead')
         
         if (result.success) {
           onSuccess()

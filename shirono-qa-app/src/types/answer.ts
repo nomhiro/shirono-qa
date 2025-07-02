@@ -33,6 +33,7 @@ export interface CreateAnswerResult {
 
 export interface UpdateAnswerRequest {
   content?: string
+  attachments?: Attachment[]
 }
 
 export interface UpdateAnswerResult {

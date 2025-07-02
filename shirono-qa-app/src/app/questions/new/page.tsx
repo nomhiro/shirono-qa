@@ -2,7 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { Box, Typography, CircularProgress } from '@mui/material'
 import FileUpload from '@/components/FileUpload'
+import AppHeader from '@/components/AppHeader'
 
 interface User {
   id: string
@@ -56,16 +58,22 @@ export default function NewQuestionPage() {
     return Object.keys(newErrors).length === 0
   }
 
-  const uploadFiles = async () => {
+  const uploadFiles = async (questionId?: string) => {
     if (files.length === 0) return []
 
     const formData = new FormData()
     files.forEach(file => {
       formData.append('files', file)
     })
+    
+    // questionIdがある場合は追加
+    if (questionId) {
+      formData.append('questionId', questionId)
+    }
 
     const response = await fetch('/api/files/upload', {
       method: 'POST',
+      credentials: 'include',
       body: formData
     })
 
@@ -74,6 +82,13 @@ export default function NewQuestionPage() {
     }
 
     const data = await response.json()
+    console.log('File upload response:', data)
+    
+    // アップロード成功時のレスポンス形式を確認
+    if (data.success && data.files) {
+      return data.files.map((file: any) => file.blobUrl)
+    }
+    
     return data.urls || []
   }
 
@@ -87,18 +102,8 @@ export default function NewQuestionPage() {
     setIsSubmitting(true)
 
     try {
-      // Upload files first if any
-      let attachments: any[] = []
-      if (files.length > 0) {
-        const uploadedUrls = await uploadFiles()
-        attachments = files.map((file, index) => ({
-          fileName: file.name,
-          fileSize: file.size,
-          blobUrl: uploadedUrls[index]
-        }))
-      }
-
-      const response = await fetch('/api/questions', {
+      // まず質問を作成
+      const questionResponse = await fetch('/api/questions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -106,18 +111,59 @@ export default function NewQuestionPage() {
         body: JSON.stringify({
           title: title.trim(),
           content: content.trim(),
-          priority,
-          attachments
+          priority
         })
       })
 
-      if (response.ok) {
-        const data = await response.json()
-        router.push(`/questions/${data.question.id}`)
-      } else {
+      if (!questionResponse.ok) {
         setErrors({ submit: '質問の投稿に失敗しました' })
+        return
       }
+
+      const questionData = await questionResponse.json()
+      const questionId = questionData.question.id
+
+      // ファイルがある場合はアップロードして質問に関連付け
+      if (files.length > 0) {
+        try {
+          // ファイルをアップロード
+          const uploadedFiles = await uploadFiles(questionId)
+          
+          // アップロードされたファイル情報を準備
+          const fileInfos = files.map((file, index) => ({
+            fileName: file.name, // 元のファイル名
+            blobUrl: uploadedFiles[index], // フルパス（Blob URL）
+            size: file.size,
+            contentType: file.type
+          }))
+          
+          console.log('File infos for attachment:', fileInfos)
+
+          // 質問にファイルを関連付け
+          const attachResponse = await fetch(`/api/questions/${questionId}/attachments`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            credentials: 'include',
+            body: JSON.stringify({
+              files: fileInfos
+            })
+          })
+
+          if (!attachResponse.ok) {
+            console.warn('Failed to attach files to question, but question was created')
+          }
+        } catch (fileError) {
+          console.warn('File upload failed, but question was created:', fileError)
+        }
+      }
+
+      // 質問詳細画面に遷移
+      router.push(`/questions/${questionId}`)
+      
     } catch (error) {
+      console.error('Question submission error:', error)
       setErrors({ submit: '質問の投稿に失敗しました' })
     } finally {
       setIsSubmitting(false)
@@ -129,15 +175,30 @@ export default function NewQuestionPage() {
   }
 
   if (isLoading) {
-    return <div>Loading...</div>
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <AppHeader breadcrumbItems={[
+          { label: 'ホーム', href: '/questions' },
+          { label: '新規質問', current: true }
+        ]} />
+        <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
+          <CircularProgress />
+          <Typography variant="body1" sx={{ ml: 2 }}>Loading...</Typography>
+        </Box>
+      </div>
+    )
   }
+
+  const breadcrumbItems = [
+    { label: 'ホーム', href: '/questions' },
+    { label: '新規質問', current: true }
+  ]
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <AppHeader breadcrumbItems={breadcrumbItems} />
+      
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">新規質問投稿</h1>
-        </div>
 
         <form onSubmit={handleSubmit} className="bg-white shadow rounded-lg p-6">
           {errors.submit && (

@@ -1,8 +1,30 @@
 import nodemailer from 'nodemailer'
-import { Question } from '@/types/question'
+import { Question, QuestionStatus } from '@/types/question'
 import { Answer } from '@/types/answer'
 import { Comment } from '@/types/comment'
 import { User } from '@/types/auth'
+
+export interface EmailConfig {
+  host: string
+  port: number
+  user: string
+  password: string
+}
+
+export interface NotificationData {
+  recipientName: string
+  authorName: string
+  questionTitle: string
+  questionUrl: string
+  actionType: 'question_posted' | 'answer_posted' | 'comment_added' | 'status_changed' | 'question_rejected'
+  newStatus?: QuestionStatus
+}
+
+export interface EmailTemplate {
+  subject: string
+  html: string
+  text: string
+}
 
 export enum EmailType {
   QUESTION_POSTED = 'QUESTION_POSTED',
@@ -31,46 +53,31 @@ export interface EmailResult {
 }
 
 class EmailService {
-  private transporter: nodemailer.Transporter | null = null
+  private transporter: nodemailer.Transporter
   private fromAddress: string
-  private isModMode: boolean
 
   constructor(config: EmailConfig) {
     this.fromAddress = config.user
-    this.isModMode = config.host.startsWith('mock://')
-    
-    if (!this.isModMode) {
-      this.transporter = nodemailer.createTransport({
-        host: config.host,
-        port: config.port,
-        secure: config.port === 465, // SSL for port 465, TLS for others
-        auth: {
-          user: config.user,
-          pass: config.password
-        },
-        tls: {
-          // Gmail requires this
-          rejectUnauthorized: false
-        }
-      })
-    } else {
-      console.log('🎭 Running in mock mode - no real email connection')
-    }
+    this.transporter = nodemailer.createTransport({
+      host: config.host,
+      port: config.port,
+      secure: config.port === 465, // SSL for port 465, TLS for others
+      auth: {
+        user: config.user,
+        pass: config.password
+      },
+      tls: {
+        // Gmail requires this
+        rejectUnauthorized: false
+      }
+    })
   }
 
   /**
    * 接続テスト
    */
   async testConnection(): Promise<boolean> {
-    if (this.isModMode) {
-      console.log('🎭 Mock: Email connection test successful')
-      return true
-    }
-
     try {
-      if (!this.transporter) {
-        throw new Error('Transporter not initialized')
-      }
       await this.transporter.verify()
       console.log('Email service connection verified')
       return true
@@ -87,16 +94,7 @@ class EmailService {
     recipientEmail: string,
     data: NotificationData
   ): Promise<boolean> {
-    if (this.isModMode) {
-      console.log(`🎭 Mock: Email sent to ${recipientEmail}`)
-      console.log(`   Subject: ${this.getEmailTemplate(data).subject}`)
-      return true
-    }
-
     try {
-      if (!this.transporter) {
-        throw new Error('Transporter not initialized')
-      }
 
       const template = this.getEmailTemplate(data)
       
@@ -855,7 +853,7 @@ export async function sendNotificationEmail(
     }
 
     // SMTPトランスポーターの設定
-    const transporter = nodemailer.createTransporter({
+    const transporter = nodemailer.createTransport({
       host: smtpHost,
       port: smtpPort,
       secure: smtpPort === 465, // SSL/TLS
@@ -892,6 +890,54 @@ export async function sendNotificationEmail(
       error: error instanceof Error ? error.message : 'Unknown error occurred'
     }
   }
+}
+
+// シングルトンインスタンス
+let emailServiceInstance: EmailService | null = null
+
+/**
+ * EmailServiceインスタンスを取得
+ */
+export function getEmailService(): EmailService {
+  if (!emailServiceInstance) {
+    const host = process.env.SMTP_HOST
+    const port = parseInt(process.env.SMTP_PORT || '587')
+    const user = process.env.SMTP_USER
+    const password = process.env.SMTP_PASSWORD
+
+    if (!host || !user || !password) {
+      throw new Error('Email configuration is missing. Please set SMTP_HOST, SMTP_USER, and SMTP_PASSWORD environment variables.')
+    }
+
+    emailServiceInstance = new EmailService({
+      host,
+      port,
+      user,
+      password
+    })
+  }
+
+  return emailServiceInstance
+}
+
+/**
+ * Email設定の検証
+ */
+export const validateEmailConfig = (): { valid: boolean; error?: string } => {
+  const host = process.env.SMTP_HOST
+  const user = process.env.SMTP_USER
+  const password = process.env.SMTP_PASSWORD
+
+  if (!host) {
+    return { valid: false, error: 'SMTP_HOST is required' }
+  }
+  if (!user) {
+    return { valid: false, error: 'SMTP_USER is required' }
+  }
+  if (!password) {
+    return { valid: false, error: 'SMTP_PASSWORD is required' }
+  }
+  return { valid: true }
 }
 
 export default EmailService

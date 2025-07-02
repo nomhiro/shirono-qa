@@ -485,7 +485,7 @@ describe('Email Notification Service', () => {
 
       const mailCall = mockSendMail.mock.calls[0][0]
       expect(mailCall.html).toContain('<html>')
-      expect(mailCall.html).toContain('<body>')
+      expect(mailCall.html).toContain('body style=')
       expect(mailCall.html).toContain('href=')
       expect(mailCall.html).toContain('style=')
       expect(mailCall.text).not.toContain('<html>')

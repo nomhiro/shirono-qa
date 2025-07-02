@@ -6,52 +6,26 @@ interface CosmosConfig {
 }
 
 class CosmosService {
-  private client: CosmosClient | null = null
-  private database: Database | null = null
+  private client: CosmosClient
+  private database: Database
   private containers: Map<string, Container> = new Map()
-  private isModMode: boolean
 
   constructor(config: CosmosConfig) {
-    this.isModMode = config.connectionString.startsWith('mock://')
-    
-    if (!this.isModMode) {
-      this.client = new CosmosClient(config.connectionString)
-      this.database = this.client.database(config.databaseName)
-    } else {
-      console.log('🎭 Running in mock mode - no real Cosmos DB connection')
-    }
+    this.client = new CosmosClient(config.connectionString)
+    this.database = this.client.database(config.databaseName)
   }
 
   /**
    * コンテナを取得または作成
    */
-  async getContainer(containerId: string, partitionKey?: string): Promise<Container | null> {
-    if (this.isModMode) {
-      console.log(`🎭 Mock: Getting container ${containerId}`)
-      // モック環境では簡易的なコンテナオブジェクトを返す
-      return {
-        items: {
-          create: (item: any) => Promise.resolve({ resource: item }),
-          query: () => ({
-            fetchAll: () => Promise.resolve({ resources: [] }),
-            fetchNext: () => Promise.resolve({ resources: [], continuationToken: undefined })
-          })
-        },
-        item: (id: string, partitionKey?: string) => ({
-          read: () => Promise.resolve({ resource: null }),
-          replace: (item: any) => Promise.resolve({ resource: item }),
-          delete: () => Promise.resolve({})
-        })
-      } as any
-    }
-
+  async getContainer(containerId: string, partitionKey?: string): Promise<Container> {
     if (this.containers.has(containerId)) {
       return this.containers.get(containerId)!
     }
 
     try {
       // コンテナの存在確認
-      const { container } = await this.database!.containers.createIfNotExists({
+      const { container } = await this.database.containers.createIfNotExists({
         id: containerId,
         partitionKey: partitionKey || '/id'
       })
@@ -68,15 +42,10 @@ class CosmosService {
    * データベース初期化
    */
   async initializeDatabase(): Promise<void> {
-    if (this.isModMode) {
-      console.log('🎭 Mock: Database initialization completed')
-      return
-    }
-
     try {
       // データベース作成
-      await this.client!.databases.createIfNotExists({
-        id: this.database!.id
+      await this.client.databases.createIfNotExists({
+        id: this.database.id
       })
 
       // 必要なコンテナを作成
@@ -104,14 +73,9 @@ class CosmosService {
    * アイテム作成
    */
   async createItem<T>(containerId: string, item: T): Promise<T> {
-    if (this.isModMode) {
-      console.log(`🎭 Mock: Creating item in ${containerId}:`, (item as any).id || 'unknown')
-      return item
-    }
-
     try {
       const container = await this.getContainer(containerId)
-      const { resource } = await container!.items.create(item)
+      const { resource } = await container.items.create(item)
       return resource as T
     } catch (error) {
       console.error(`Failed to create item in ${containerId}:`, error)
@@ -258,13 +222,8 @@ class CosmosService {
    * 接続テスト
    */
   async testConnection(): Promise<boolean> {
-    if (this.isModMode) {
-      console.log('🎭 Mock: Connection test successful')
-      return true
-    }
-
     try {
-      await this.database!.read()
+      await this.database.read()
       return true
     } catch (error) {
       console.error('Connection test failed:', error)
@@ -276,7 +235,7 @@ class CosmosService {
    * リソースクリーンアップ
    */
   dispose(): void {
-    if (!this.isModMode && this.client) {
+    if (this.client) {
       this.client.dispose()
     }
     this.containers.clear()
@@ -308,11 +267,19 @@ export function getCosmosService(): CosmosService {
 }
 
 /**
- * 開発用のモック機能フラグ
+ * Cosmos DB設定の検証
  */
-export const isCosmosEnabled = (): boolean => {
+export const validateCosmosConfig = (): { valid: boolean; error?: string } => {
   const connectionString = process.env.COSMOS_DB_CONNECTION_STRING
-  return connectionString !== undefined && !connectionString.startsWith('mock://')
+  const databaseName = process.env.COSMOS_DB_DATABASE_NAME
+
+  if (!connectionString) {
+    return { valid: false, error: 'COSMOS_DB_CONNECTION_STRING is required' }
+  }
+  if (!databaseName) {
+    return { valid: false, error: 'COSMOS_DB_DATABASE_NAME is required' }
+  }
+  return { valid: true }
 }
 
 export default CosmosService

@@ -14,9 +14,12 @@ export async function GET(request: NextRequest) {
     }
 
     // セッション検証
+    console.log('Validating session token:', sessionToken.substring(0, 10) + '...')
     const validation = await validateSession(sessionToken)
+    console.log('Session validation result:', validation)
     
     if (!validation.valid || !validation.user) {
+      console.log('Session validation failed:', validation)
       return NextResponse.json(
         { error: 'Invalid session' },
         { status: 401 }

@@ -49,8 +49,8 @@ export default function AnswerForm({ mode, questionId, answer, onSuccess, onCanc
           attachments
         }
         
-        // Mock authorId for testing
-        const result = await createAnswer(answerData, questionId, 'current-user-id')
+        // Note: This component is deprecated, use the main question detail page instead
+        throw new Error('AnswerForm component is deprecated. Use question detail page for posting answers.')
         
         if (result.success) {
           onSuccess()

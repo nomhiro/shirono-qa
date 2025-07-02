@@ -8,8 +8,9 @@ interface UseFileUploadProps {
   onFilesChange?: (files: File[]) => void
 }
 
-interface FileWithPreview extends File {
-  preview?: string
+interface FileData {
+  id: string
+  file: File
 }
 
 export function useFileUpload({
@@ -18,75 +19,108 @@ export function useFileUpload({
   allowedTypes = [...ALLOWED_FILE_TYPES],
   onFilesChange
 }: UseFileUploadProps = {}) {
-  const [files, setFiles] = useState<FileWithPreview[]>([])
-  const [errors, setErrors] = useState<string[]>([])
+  const [files, setFiles] = useState<FileData[]>([])
+  const [previews, setPreviews] = useState<Record<string, string>>({})
+  const [errors, setErrors] = useState<Record<string, string>>({})
   const [isUploading, setIsUploading] = useState(false)
 
-  const validateAndSetFiles = useCallback((newFiles: File[]) => {
-    const validation = validateFiles(newFiles, {
-      maxCount: maxFiles,
+  const generateFileId = useCallback(() => {
+    return `file-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+  }, [])
+
+  const addFile = useCallback((file: File) => {
+    // Check if we're at max files
+    if (files.length >= maxFiles) {
+      const errorId = generateFileId()
+      setErrors(prev => ({
+        ...prev,
+        [errorId]: `最大${maxFiles}ファイルまでアップロードできます`
+      }))
+      return
+    }
+
+    // Validate single file
+    const validation = validateFiles([file], {
+      maxCount: 1,
       maxSize: maxFileSize,
       allowedTypes
     })
 
-    setErrors(validation.errors)
+    const fileId = generateFileId()
 
-    if (validation.valid) {
-      const filesWithPreview = newFiles.map(file => {
-        const fileWithPreview = file as FileWithPreview
-        
-        // Create preview for image files
-        if (file.type.startsWith('image/')) {
-          fileWithPreview.preview = URL.createObjectURL(file)
-        }
-        
-        return fileWithPreview
-      })
-
-      setFiles(filesWithPreview)
-      onFilesChange?.(newFiles)
-      return true
+    if (!validation.valid) {
+      setErrors(prev => ({
+        ...prev,
+        [fileId]: validation.errors[0] || 'ファイルが無効です'
+      }))
+      return
     }
 
-    return false
-  }, [maxFiles, maxFileSize, allowedTypes, onFilesChange])
+    // Clear any existing errors for this operation
+    setErrors(prev => {
+      const newErrors = { ...prev }
+      delete newErrors[fileId]
+      return newErrors
+    })
 
-  const handleFileSelect = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFiles = Array.from(event.target.files || [])
-    validateAndSetFiles(selectedFiles)
-  }, [validateAndSetFiles])
+    const fileData: FileData = {
+      id: fileId,
+      file
+    }
 
-  const addFiles = useCallback((newFiles: File[]) => {
-    const allFiles = [...files, ...newFiles]
-    return validateAndSetFiles(allFiles)
-  }, [files, validateAndSetFiles])
+    // Create preview for image files
+    if (file.type.startsWith('image/')) {
+      const previewUrl = URL.createObjectURL(file)
+      setPreviews(prev => ({
+        ...prev,
+        [fileId]: previewUrl
+      }))
+    }
 
-  const removeFile = useCallback((index: number) => {
-    const updatedFiles = files.filter((_, i) => i !== index)
-    
+    // Add file to list
+    setFiles(prev => {
+      const newFiles = [...prev, fileData]
+      onFilesChange?.(newFiles.map(f => f.file))
+      return newFiles
+    })
+  }, [files.length, maxFiles, maxFileSize, allowedTypes, onFilesChange, generateFileId])
+
+  const removeFile = useCallback((fileId: string) => {
+    setFiles(prev => {
+      const newFiles = prev.filter(f => f.id !== fileId)
+      onFilesChange?.(newFiles.map(f => f.file))
+      return newFiles
+    })
+
     // Clean up preview URL
-    const removedFile = files[index]
-    if (removedFile?.preview) {
-      URL.revokeObjectURL(removedFile.preview)
-    }
+    setPreviews(prev => {
+      const newPreviews = { ...prev }
+      if (newPreviews[fileId]) {
+        URL.revokeObjectURL(newPreviews[fileId])
+        delete newPreviews[fileId]
+      }
+      return newPreviews
+    })
 
-    setFiles(updatedFiles)
-    onFilesChange?.(updatedFiles)
-    setErrors([]) // Clear errors when removing files
-  }, [files, onFilesChange])
+    // Clear any errors for this file
+    setErrors(prev => {
+      const newErrors = { ...prev }
+      delete newErrors[fileId]
+      return newErrors
+    })
+  }, [onFilesChange])
 
   const clearFiles = useCallback(() => {
     // Clean up all preview URLs
-    files.forEach(file => {
-      if (file.preview) {
-        URL.revokeObjectURL(file.preview)
-      }
+    Object.values(previews).forEach(url => {
+      URL.revokeObjectURL(url)
     })
 
     setFiles([])
-    setErrors([])
+    setPreviews({})
+    setErrors({})
     onFilesChange?.([])
-  }, [files, onFilesChange])
+  }, [previews, onFilesChange])
 
   const formatFileSize = useCallback((bytes: number): string => {
     if (bytes === 0) return '0 Bytes'
@@ -100,15 +134,15 @@ export function useFileUpload({
 
   return {
     files,
+    previews,
     errors,
     isUploading,
     setIsUploading,
-    handleFileSelect,
-    addFiles,
+    addFile,
     removeFile,
     clearFiles,
     formatFileSize,
-    isValid: errors.length === 0,
-    totalSize: files.reduce((total, file) => total + file.size, 0)
+    isValid: Object.keys(errors).length === 0,
+    totalSize: files.reduce((total, file) => total + file.file.size, 0)
   }
 }

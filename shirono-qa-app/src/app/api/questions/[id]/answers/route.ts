@@ -1,13 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { validateSession } from '../../../../../lib/auth'
 import { createAnswer, getAnswersByQuestion } from '../../../../../lib/answers'
-import { getQuestion } from '../../../../../lib/questions'
+import { getQuestion, updateQuestionTimestamp } from '../../../../../lib/questions'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
+    // paramsを待機
+    const params = await context.params
+    
     // セッション検証
     const sessionToken = request.cookies.get('session')?.value
     if (!sessionToken) {
@@ -68,9 +71,12 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
+    // paramsを待機
+    const params = await context.params
+    
     // セッション検証
     const sessionToken = request.cookies.get('session')?.value
     if (!sessionToken) {
@@ -89,7 +95,25 @@ export async function POST(
     }
 
     const questionId = params.id
-    const body = await request.json()
+    
+    // FormDataを解析
+    const formData = await request.formData()
+    const content = formData.get('content') as string
+    const fileCount = parseInt(formData.get('fileCount') as string || '0')
+    
+    // ファイルを収集
+    const attachmentFiles: File[] = []
+    for (let i = 0; i < fileCount; i++) {
+      const file = formData.get(`file_${i}`) as File
+      if (file) {
+        attachmentFiles.push(file)
+      }
+    }
+    
+    const body = {
+      content,
+      attachments: attachmentFiles
+    }
 
     // 質問の存在確認とアクセス権限チェック
     const questionResult = await getQuestion(questionId)
@@ -108,18 +132,97 @@ export async function POST(
       )
     }
 
+    // 管理者権限チェック（回答は管理者のみ投稿可能）
+    if (!validation.user.isAdmin) {
+      return NextResponse.json(
+        { error: 'Only administrators can post answers' },
+        { status: 403 }
+      )
+    }
+
     // 回答作成
+    console.log('Creating answer with content:', content, 'and', attachmentFiles.length, 'files')
     const answerResult = await createAnswer(body, questionId, validation.user.id)
+    console.log('Answer creation result:', answerResult)
     if (!answerResult.success) {
+      console.error('Answer creation failed:', answerResult.error)
       return NextResponse.json(
         { error: answerResult.error },
         { status: 400 }
       )
     }
 
+    let finalAnswer = answerResult.answer!
+
+    // ファイルがある場合はアップロードして回答に関連付け
+    if (attachmentFiles.length > 0) {
+      try {
+        // ファイルをBlob Storageにアップロード
+        const { getBlobStorageService } = await import('../../../../../lib/blob-storage')
+        const blobService = getBlobStorageService()
+        
+        const uploadResults = []
+        for (const file of attachmentFiles) {
+          const bytes = await file.arrayBuffer()
+          const buffer = Buffer.from(bytes)
+          
+          const metadata = {
+            originalName: file.name,
+            uploadedBy: validation.user.id,
+            uploadedAt: new Date().toISOString(),
+            questionId: questionId,
+            answerId: finalAnswer.id
+          }
+          
+          // 回答用のパスを生成
+          const filePath = blobService.generateBlobPath('answer', questionId, finalAnswer.id)
+          const uniqueFileName = await blobService.generateUniqueFileNameInPath(filePath, file.name)
+          
+          const uploadResult = await blobService.uploadFileWithPath(
+            filePath,
+            uniqueFileName,
+            buffer,
+            file.type,
+            metadata
+          )
+          
+          uploadResults.push({
+            fileName: file.name, // 元のファイル名を保持
+            blobUrl: uploadResult.blobUrl,
+            size: uploadResult.fileSize,
+            contentType: file.type
+          })
+        }
+
+        // 回答にファイルを関連付け
+        const attachResponse = await fetch(`${request.nextUrl.origin}/api/answers/${finalAnswer.id}/attachments`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Cookie': request.headers.get('cookie') || ''
+          },
+          body: JSON.stringify({
+            files: uploadResults
+          })
+        })
+
+        if (attachResponse.ok) {
+          const attachResult = await attachResponse.json()
+          if (attachResult.success) {
+            finalAnswer = attachResult.answer
+          }
+        }
+      } catch (fileError) {
+        console.warn('File upload failed for answer, but answer was created:', fileError)
+      }
+    }
+
+    // 質問の更新日時を更新
+    await updateQuestionTimestamp(questionId)
+
     return NextResponse.json({
       success: true,
-      answer: answerResult.answer
+      answer: finalAnswer
     }, { status: 201 })
   } catch (error) {
     console.error('Create answer API error:', error)

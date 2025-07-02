@@ -51,7 +51,53 @@ class BlobStorageService {
   }
 
   /**
-   * ファイルアップロード（Buffer形式）
+   * 構造化されたパスでファイルアップロード
+   */
+  async uploadFileWithPath(
+    filePath: string,
+    fileName: string,
+    fileBuffer: Buffer,
+    contentType: string,
+    metadata: FileMetadata
+  ): Promise<UploadResult> {
+    try {
+      // パスとファイル名を組み合わせて完全なBlob名を作成
+      const fullBlobName = `${filePath}/${fileName}`.replace(/\/+/g, '/')
+      const blobClient = this.containerClient.getBlobClient(fullBlobName)
+      const blockBlobClient = blobClient.getBlockBlobClient()
+
+      // メタデータを設定（ASCII文字のみ許可されるためBase64エンコード）
+      const blobMetadata = {
+        originalName: this.encodeMetadataValue(metadata.originalName),
+        uploadedBy: this.sanitizeMetadataValue(metadata.uploadedBy),
+        uploadedAt: this.sanitizeMetadataValue(metadata.uploadedAt),
+        questionId: this.sanitizeMetadataValue(metadata.questionId || ''),
+        answerId: this.sanitizeMetadataValue(metadata.answerId || ''),
+        commentId: this.sanitizeMetadataValue(metadata.commentId || '')
+      }
+
+      // ファイルをアップロード
+      await blockBlobClient.upload(fileBuffer, fileBuffer.length, {
+        blobHTTPHeaders: {
+          blobContentType: contentType
+        },
+        metadata: blobMetadata
+      })
+
+      return {
+        fileName: fullBlobName,
+        blobUrl: blobClient.url,
+        fileSize: fileBuffer.length,
+        contentType
+      }
+    } catch (error) {
+      console.error('Failed to upload file with path:', error)
+      throw error
+    }
+  }
+
+  /**
+   * ファイルアップロード（Buffer形式）- 後方互換性のため残す
    */
   async uploadFile(
     fileName: string,
@@ -65,14 +111,14 @@ class BlobStorageService {
       const blobClient = this.containerClient.getBlobClient(uniqueFileName)
       const blockBlobClient = blobClient.getBlockBlobClient()
 
-      // メタデータを設定
+      // メタデータを設定（ASCII文字のみ許可されるためBase64エンコード）
       const blobMetadata = {
-        originalName: metadata.originalName,
-        uploadedBy: metadata.uploadedBy,
-        uploadedAt: metadata.uploadedAt,
-        questionId: metadata.questionId || '',
-        answerId: metadata.answerId || '',
-        commentId: metadata.commentId || ''
+        originalName: this.encodeMetadataValue(metadata.originalName),
+        uploadedBy: this.sanitizeMetadataValue(metadata.uploadedBy),
+        uploadedAt: this.sanitizeMetadataValue(metadata.uploadedAt),
+        questionId: this.sanitizeMetadataValue(metadata.questionId || ''),
+        answerId: this.sanitizeMetadataValue(metadata.answerId || ''),
+        commentId: this.sanitizeMetadataValue(metadata.commentId || '')
       }
 
       // ファイルをアップロード
@@ -111,12 +157,12 @@ class BlobStorageService {
       const blockBlobClient = blobClient.getBlockBlobClient()
 
       const blobMetadata = {
-        originalName: metadata.originalName,
-        uploadedBy: metadata.uploadedBy,
-        uploadedAt: metadata.uploadedAt,
-        questionId: metadata.questionId || '',
-        answerId: metadata.answerId || '',
-        commentId: metadata.commentId || ''
+        originalName: this.encodeMetadataValue(metadata.originalName),
+        uploadedBy: this.sanitizeMetadataValue(metadata.uploadedBy),
+        uploadedAt: this.sanitizeMetadataValue(metadata.uploadedAt),
+        questionId: this.sanitizeMetadataValue(metadata.questionId || ''),
+        answerId: this.sanitizeMetadataValue(metadata.answerId || ''),
+        commentId: this.sanitizeMetadataValue(metadata.commentId || '')
       }
 
       await blockBlobClient.uploadStream(fileStream, undefined, undefined, {
@@ -176,11 +222,19 @@ class BlobStorageService {
       const blobClient = this.containerClient.getBlobClient(fileName)
       const properties = await blobClient.getProperties()
 
+      // メタデータをデコード
+      const decodedMetadata: Record<string, string> = {}
+      if (properties.metadata) {
+        for (const [key, value] of Object.entries(properties.metadata)) {
+          decodedMetadata[key] = this.decodeMetadataValue(value)
+        }
+      }
+
       return {
         exists: true,
         size: properties.contentLength,
         contentType: properties.contentType,
-        metadata: properties.metadata,
+        metadata: decodedMetadata,
         lastModified: properties.lastModified
       }
     } catch (error: any) {
@@ -207,6 +261,67 @@ class BlobStorageService {
       console.error('Failed to delete file:', error)
       throw error
     }
+  }
+
+  /**
+   * Blob URLからファイル削除
+   */
+  async deleteFileByUrl(blobUrl: string): Promise<boolean> {
+    try {
+      const fileName = this.extractFileNameFromUrl(blobUrl)
+      return await this.deleteFile(fileName)
+    } catch (error) {
+      console.error('Failed to delete file by URL:', error)
+      return false
+    }
+  }
+
+  /**
+   * 複数ファイルを一括削除
+   */
+  async deleteFiles(fileNames: string[]): Promise<{ success: number; failed: string[] }> {
+    const failed: string[] = []
+    let success = 0
+
+    for (const fileName of fileNames) {
+      try {
+        const result = await this.deleteFile(fileName)
+        if (result) {
+          success++
+        } else {
+          failed.push(fileName)
+        }
+      } catch (error) {
+        console.error(`Failed to delete file ${fileName}:`, error)
+        failed.push(fileName)
+      }
+    }
+
+    return { success, failed }
+  }
+
+  /**
+   * 複数のBlob URLからファイルを一括削除
+   */
+  async deleteFilesByUrls(blobUrls: string[]): Promise<{ success: number; failed: string[] }> {
+    const failed: string[] = []
+    let success = 0
+
+    for (const blobUrl of blobUrls) {
+      try {
+        const result = await this.deleteFileByUrl(blobUrl)
+        if (result) {
+          success++
+        } else {
+          failed.push(blobUrl)
+        }
+      } catch (error) {
+        console.error(`Failed to delete file by URL ${blobUrl}:`, error)
+        failed.push(blobUrl)
+      }
+    }
+
+    return { success, failed }
   }
 
   /**
@@ -284,9 +399,157 @@ class BlobStorageService {
     const timestamp = Date.now()
     const randomString = Math.random().toString(36).substring(2, 8)
     const extension = originalFileName.split('.').pop()
-    const nameWithoutExt = originalFileName.replace(/\.[^/.]+$/, '')
+    let nameWithoutExt = originalFileName.replace(/\.[^/.]+$/, '')
     
-    return `${timestamp}-${randomString}-${nameWithoutExt}.${extension}`
+    // Blob Storageでは日本語などの非ASCII文字がファイル名に含まれると問題が発生するため
+    // ASCII文字以外を安全な文字に置換またはBase64エンコード
+    const safeName = this.sanitizeFileName(nameWithoutExt)
+    
+    return `${timestamp}-${randomString}-${safeName}.${extension}`
+  }
+
+  /**
+   * ファイル名をBlob Storage用にサニタイズ
+   */
+  private sanitizeFileName(fileName: string): string {
+    // ASCII文字以外を削除またはエンコード
+    return fileName
+      .replace(/[^\x20-\x7E]/g, '') // 非ASCII文字を削除
+      .replace(/\s+/g, '_') // スペースをアンダースコアに
+      .replace(/[<>:"/\\|?*]/g, '') // 特殊文字を削除
+      .substring(0, 100) // 長さ制限
+  }
+
+  /**
+   * Blob Storage用のパス生成
+   */
+  generateBlobPath(type: 'question' | 'answer' | 'comment', questionId: string, itemId?: string): string {
+    const basePath = `questions/${questionId}`
+    
+    switch (type) {
+      case 'question':
+        return `${basePath}/question`
+      case 'answer':
+        return `${basePath}/answers/${itemId}`
+      case 'comment':
+        return `${basePath}/comments/${itemId}`
+      default:
+        throw new Error(`Unknown upload type: ${type}`)
+    }
+  }
+
+  /**
+   * ファイル名の重複を避けるため、必要に応じて番号を付与
+   */
+  async generateUniqueFileNameInPath(filePath: string, originalFileName: string): Promise<string> {
+    let fileName = originalFileName
+    let counter = 1
+    
+    while (true) {
+      const fullBlobName = `${filePath}/${fileName}`.replace(/\/+/g, '/')
+      const blobClient = this.containerClient.getBlobClient(fullBlobName)
+      
+      try {
+        const exists = await blobClient.exists()
+        if (!exists) {
+          return fileName
+        }
+        
+        // ファイルが既に存在する場合は番号を付与
+        const nameParts = originalFileName.split('.')
+        const extension = nameParts.pop()
+        const baseName = nameParts.join('.')
+        fileName = `${baseName}_${counter}.${extension}`
+        counter++
+        
+      } catch (error) {
+        // exists() でエラーが発生した場合は、ファイルが存在しないと仮定
+        return fileName
+      }
+    }
+  }
+
+  /**
+   * メタデータ値をBase64エンコード（非ASCII文字対応）
+   */
+  private encodeMetadataValue(value: string): string {
+    if (!value) return ''
+    try {
+      // 非ASCII文字が含まれているかチェック
+      if (/[^\x00-\x7F]/.test(value)) {
+        // Base64エンコードしてプレフィックスを付与
+        return 'b64:' + Buffer.from(value, 'utf8').toString('base64')
+      }
+      // ASCII文字のみの場合はそのまま
+      return this.sanitizeMetadataValue(value)
+    } catch (error) {
+      console.warn('Failed to encode metadata value:', value, error)
+      return 'encoded-error'
+    }
+  }
+
+  /**
+   * メタデータ値をサニタイズ（ASCII文字のみ許可）
+   */
+  private sanitizeMetadataValue(value: string): string {
+    if (!value) return ''
+    // ASCII文字以外を削除し、制御文字も除去
+    return value.replace(/[^\x20-\x7E]/g, '').substring(0, 8192) // Azure の制限
+  }
+
+  /**
+   * エンコードされたメタデータ値をデコード
+   */
+  private decodeMetadataValue(value: string): string {
+    if (!value) return ''
+    try {
+      if (value.startsWith('b64:')) {
+        // Base64デコード
+        return Buffer.from(value.substring(4), 'base64').toString('utf8')
+      }
+      // そのまま返す
+      return value
+    } catch (error) {
+      console.warn('Failed to decode metadata value:', value, error)
+      return value
+    }
+  }
+
+  /**
+   * Blob URLからフルパス（コンテナ名以降）を抽出（パブリックメソッド）
+   */
+  extractFileNameFromUrl(blobUrl: string): string {
+    if (blobUrl.startsWith('mock://')) {
+      return blobUrl.replace('mock://blob/', '')
+    }
+    
+    try {
+      const url = new URL(blobUrl)
+      const pathParts = url.pathname.split('/').filter(part => part.length > 0)
+      
+      // パスの最初の部分はコンテナ名、それ以降がファイルパス
+      if (pathParts.length < 2) {
+        throw new Error('Invalid blob URL structure')
+      }
+      
+      // コンテナ名（pathParts[0]）を除いたフルパスを取得
+      const fullPath = pathParts.slice(1).join('/')
+      
+      // URLデコードを適用
+      let decodedPath = fullPath
+      try {
+        decodedPath = decodeURIComponent(fullPath)
+      } catch (decodeError) {
+        console.warn('Failed to decode full path:', fullPath, decodeError)
+        // デコードに失敗した場合はそのまま使用
+      }
+      
+      console.log('Extracted full path from URL:', { blobUrl, fullPath: decodedPath })
+      return decodedPath
+    } catch (error) {
+      console.error('Failed to extract full path from URL:', blobUrl, error)
+      throw new Error(`Invalid blob URL: ${blobUrl}`)
+    }
   }
 
   /**

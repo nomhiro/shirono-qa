@@ -1,7 +1,7 @@
 import { User, Session } from '../types/auth'
 import { getCosmosService } from './cosmos'
 import { generateSessionToken } from './auth'
-import { AppError, ErrorCode } from './errors'
+import { ErrorCodes, ErrorHandler } from './errors'
 
 /**
  * ユーザー名でユーザーを取得
@@ -18,11 +18,7 @@ export async function getUserByUsername(username: string): Promise<User | null> 
     return users.length > 0 ? users[0] : null
   } catch (error) {
     console.error('Failed to get user by username:', error)
-    throw new AppError(
-      ErrorCode.INTERNAL_ERROR,
-      'Failed to retrieve user',
-      { username }
-    )
+    throw ErrorHandler.createInternalError('Failed to retrieve user')
   }
 }
 
@@ -35,11 +31,7 @@ export async function getUserById(userId: string): Promise<User | null> {
     return await cosmosService.getItem<User>('users', userId)
   } catch (error) {
     console.error('Failed to get user by ID:', error)
-    throw new AppError(
-      ErrorCode.INTERNAL_ERROR,
-      'Failed to retrieve user',
-      { userId }
-    )
+    throw ErrorHandler.createInternalError('Failed to retrieve user')
   }
 }
 
@@ -53,11 +45,7 @@ export async function createUser(user: Omit<User, 'id' | 'createdAt' | 'lastLogi
     // ユーザー名の重複チェック
     const existingUser = await getUserByUsername(user.username)
     if (existingUser) {
-      throw new AppError(
-        ErrorCode.VALIDATION_ERROR,
-        'Username already exists',
-        { username: user.username }
-      )
+      throw ErrorHandler.createValidationError('Username already exists')
     }
     
     const newUser: User = {
@@ -69,15 +57,11 @@ export async function createUser(user: Omit<User, 'id' | 'createdAt' | 'lastLogi
     
     return await cosmosService.createItem<User>('users', newUser)
   } catch (error) {
-    if (error instanceof AppError) {
+    if (error && typeof error === 'object' && 'code' in error) {
       throw error
     }
     console.error('Failed to create user:', error)
-    throw new AppError(
-      ErrorCode.INTERNAL_ERROR,
-      'Failed to create user',
-      { username: user.username }
-    )
+    throw ErrorHandler.createInternalError('Failed to create user')
   }
 }
 
@@ -90,7 +74,7 @@ export async function updateUserLastLogin(userId: string): Promise<void> {
     
     const user = await getUserById(userId)
     if (!user) {
-      throw new AppError(ErrorCode.NOT_FOUND, 'User not found', { userId })
+      throw ErrorHandler.createNotFoundError('User')
     }
     
     const updatedUser = {
@@ -100,15 +84,11 @@ export async function updateUserLastLogin(userId: string): Promise<void> {
     
     await cosmosService.updateItem('users', userId, updatedUser)
   } catch (error) {
-    if (error instanceof AppError) {
+    if (error && typeof error === 'object' && 'code' in error) {
       throw error
     }
     console.error('Failed to update user last login:', error)
-    throw new AppError(
-      ErrorCode.INTERNAL_ERROR,
-      'Failed to update user login time',
-      { userId }
-    )
+    throw ErrorHandler.createInternalError('Failed to update user login time')
   }
 }
 
@@ -134,11 +114,7 @@ export async function createSession(userId: string): Promise<Session> {
     return await cosmosService.createItem<Session>('sessions', session)
   } catch (error) {
     console.error('Failed to create session:', error)
-    throw new AppError(
-      ErrorCode.INTERNAL_ERROR,
-      'Failed to create session',
-      { userId }
-    )
+    throw ErrorHandler.createInternalError('Failed to create session')
   }
 }
 
@@ -160,24 +136,20 @@ export async function getSessionByToken(sessionToken: string): Promise<Session |
     return sessions.length > 0 ? sessions[0] : null
   } catch (error) {
     console.error('Failed to get session by token:', error)
-    throw new AppError(
-      ErrorCode.INTERNAL_ERROR,
-      'Failed to retrieve session',
-      { sessionToken: sessionToken.substring(0, 10) + '...' }
-    )
+    throw ErrorHandler.createInternalError('Failed to retrieve session')
   }
 }
 
 /**
  * セッションの最終アクセス時刻を更新
  */
-export async function updateSessionAccess(sessionId: string): Promise<void> {
+export async function updateSessionAccess(sessionId: string, userId: string): Promise<void> {
   try {
     const cosmosService = getCosmosService()
     
-    const session = await cosmosService.getItem<Session>('sessions', sessionId)
+    const session = await cosmosService.getItem<Session>('sessions', sessionId, userId)
     if (!session) {
-      throw new AppError(ErrorCode.NOT_FOUND, 'Session not found', { sessionId })
+      throw ErrorHandler.createNotFoundError('Session')
     }
     
     const updatedSession = {
@@ -185,17 +157,13 @@ export async function updateSessionAccess(sessionId: string): Promise<void> {
       lastAccessedAt: new Date()
     }
     
-    await cosmosService.updateItem('sessions', sessionId, updatedSession, session.userId)
+    await cosmosService.updateItem('sessions', sessionId, updatedSession, userId)
   } catch (error) {
-    if (error instanceof AppError) {
+    if (error && typeof error === 'object' && 'code' in error) {
       throw error
     }
     console.error('Failed to update session access:', error)
-    throw new AppError(
-      ErrorCode.INTERNAL_ERROR,
-      'Failed to update session access time',
-      { sessionId }
-    )
+    throw ErrorHandler.createInternalError('Failed to update session access time')
   }
 }
 
@@ -208,11 +176,7 @@ export async function deleteSession(sessionId: string, userId: string): Promise<
     await cosmosService.deleteItem('sessions', sessionId, userId)
   } catch (error) {
     console.error('Failed to delete session:', error)
-    throw new AppError(
-      ErrorCode.INTERNAL_ERROR,
-      'Failed to delete session',
-      { sessionId }
-    )
+    throw ErrorHandler.createInternalError('Failed to delete session')
   }
 }
 
@@ -233,11 +197,7 @@ export async function deleteUserSessions(userId: string): Promise<void> {
     }
   } catch (error) {
     console.error('Failed to delete user sessions:', error)
-    throw new AppError(
-      ErrorCode.INTERNAL_ERROR,
-      'Failed to delete user sessions',
-      { userId }
-    )
+    throw ErrorHandler.createInternalError('Failed to delete user sessions')
   }
 }
 
@@ -260,9 +220,6 @@ export async function cleanupExpiredSessions(): Promise<number> {
     return expiredSessions.length
   } catch (error) {
     console.error('Failed to cleanup expired sessions:', error)
-    throw new AppError(
-      ErrorCode.INTERNAL_ERROR,
-      'Failed to cleanup expired sessions'
-    )
+    throw ErrorHandler.createInternalError('Failed to cleanup expired sessions')
   }
 }

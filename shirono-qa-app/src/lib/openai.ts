@@ -1,5 +1,5 @@
-// Azure OpenAI integration using @azure/openai SDK
-import { OpenAIApi, Configuration } from '@azure/openai'
+// Azure OpenAI integration using openai SDK
+import { AzureOpenAI } from 'openai'
 
 export interface EmbeddingResponse {
   data: Array<{
@@ -27,94 +27,56 @@ export interface ChatCompletionResponse {
 }
 
 class OpenAIClient {
-  private client: OpenAIApi | null = null
+  private client: AzureOpenAI
   private endpoint: string
   private apiKey: string
   private deploymentName: string
   private embeddingModel: string
+  private apiVersion: string
 
   constructor() {
-    this.endpoint = process.env.AZURE_OPENAI_ENDPOINT || 'mock://openai'
-    this.apiKey = process.env.AZURE_OPENAI_API_KEY || 'mock-key'
+    this.endpoint = process.env.AZURE_OPENAI_ENDPOINT
+    this.apiKey = process.env.AZURE_OPENAI_API_KEY
     this.deploymentName = process.env.AZURE_OPENAI_DEPLOYMENT_NAME || 'gpt-4'
     this.embeddingModel = process.env.AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME || 'text-embedding-3-large'
+    this.apiVersion = '2024-10-21'
 
-    // Initialize Azure OpenAI client if not in mock mode
-    if (!this.endpoint.startsWith('mock://') && this.apiKey !== 'mock-key') {
-      try {
-        const configuration = new Configuration({
-          apiKey: this.apiKey,
-          basePath: `${this.endpoint}/openai/deployments`,
-          baseOptions: {
-            headers: {
-              'api-key': this.apiKey,
-            },
-            params: {
-              'api-version': '2024-02-15-preview'
-            }
-          }
+    if (!this.endpoint || !this.apiKey) {
+      throw new Error('Azure OpenAI configuration is missing. Please set AZURE_OPENAI_ENDPOINT and AZURE_OPENAI_API_KEY environment variables.')
+    }
+
+    try {
+      this.client = new AzureOpenAI({
+        endpoint: this.endpoint,
+        apiKey: this.apiKey,
+        apiVersion: this.apiVersion,
         })
-        this.client = new OpenAIApi(configuration)
-      } catch (error) {
-        console.warn('Failed to initialize Azure OpenAI client, falling back to mock mode:', error)
-      }
+    } catch (error) {
+      console.error('Failed to initialize Azure OpenAI client:', error)
+      throw error
     }
   }
 
   async embedText(text: string): Promise<number[]> {
     try {
-      // Mock implementation for testing
-      if (this.endpoint.startsWith('mock://') || !this.client) {
-        // Return a mock 3072-dimensional vector
-        return new Array(3072).fill(0).map(() => Math.random() * 2 - 1)
-      }
-
-      // Production implementation using Azure OpenAI SDK
-      const response = await this.client.createEmbedding({
+      const response = await this.client.embeddings.create({
         model: this.embeddingModel,
-        input: [text]
+        input: text,
       })
 
-      if (response.data?.data?.[0]?.embedding) {
-        return response.data.data[0].embedding
+      if (response.data?.[0]?.embedding) {
+        return response.data[0].embedding
       }
 
       throw new Error('Invalid embedding response')
     } catch (error) {
       console.error('Error generating embedding:', error)
-      // Fallback to mock for development
-      return new Array(3072).fill(0).map(() => Math.random() * 2 - 1)
+      throw error
     }
   }
 
   async generateTags(title: string, content: string): Promise<TagGenerationResponse> {
     try {
-      // Mock implementation for testing
-      if (this.endpoint.startsWith('mock://') || !this.client) {
-        const text = `${title} ${content}`.toLowerCase()
-        const possibleTags = [
-          'next.js', 'react', 'javascript', 'typescript', 'authentication', 
-          'security', 'database', 'azure', 'api', 'performance', 'optimization',
-          'deployment', 'testing', 'debugging', 'frontend', 'backend',
-          'cors', 'jwt', 'oauth', 'sql', 'nosql', 'mongodb', 'postgresql'
-        ]
-
-        const tags = possibleTags.filter(tag => text.includes(tag.toLowerCase()))
-        
-        // Add some intelligent matching
-        if (text.includes('auth')) tags.push('authentication')
-        if (text.includes('db') || text.includes('database')) tags.push('database')
-        if (text.includes('deploy')) tags.push('deployment')
-        if (text.includes('error') || text.includes('bug')) tags.push('debugging')
-        if (text.includes('slow') || text.includes('performance')) tags.push('performance')
-
-        return {
-          tags: tags.slice(0, 5), // Limit to 5 tags
-          confidence: Math.random() * 0.3 + 0.7 // 0.7-1.0
-        }
-      }
-
-      // Production implementation using Azure OpenAI
       const prompt = `Based on the following question title and content, generate up to 5 relevant technical tags. Focus on technologies, programming languages, frameworks, and concepts mentioned.
 
 Title: ${title}
@@ -128,14 +90,14 @@ Respond with only a JSON object in this format:
 
 Tags should be lowercase and use common technical terms.`
 
-      const response = await this.client.createChatCompletion({
+      const response = await this.client.chat.completions.create({
         model: this.deploymentName,
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.3,
         max_tokens: 200
       })
 
-      const responseContent = response.data?.choices?.[0]?.message?.content
+      const responseContent = response.choices?.[0]?.message?.content
       if (responseContent) {
         try {
           const parsed = JSON.parse(responseContent)
@@ -143,74 +105,37 @@ Tags should be lowercase and use common technical terms.`
             tags: parsed.tags?.slice(0, 5) || [],
             confidence: parsed.confidence || 0.8
           }
-        } catch {
-          // Fallback to mock if parsing fails
-          return this.generateTagsMock(title, content)
+        } catch (parseError) {
+          console.error('Failed to parse OpenAI response:', parseError)
+          throw new Error('Invalid response format from OpenAI')
         }
       }
 
-      return this.generateTagsMock(title, content)
+      throw new Error('No response content from OpenAI')
     } catch (error) {
       console.error('Error generating tags:', error)
-      // Fallback to mock implementation
-      return this.generateTagsMock(title, content)
+      throw error
     }
   }
 
-  private generateTagsMock(title: string, content: string): TagGenerationResponse {
-    const text = `${title} ${content}`.toLowerCase()
-    const possibleTags = [
-      'next.js', 'react', 'javascript', 'typescript', 'authentication', 
-      'security', 'database', 'azure', 'api', 'performance', 'optimization',
-      'deployment', 'testing', 'debugging', 'frontend', 'backend',
-      'cors', 'jwt', 'oauth', 'sql', 'nosql', 'mongodb', 'postgresql'
-    ]
-
-    const tags = possibleTags.filter(tag => text.includes(tag.toLowerCase()))
-    
-    // Add some intelligent matching
-    if (text.includes('auth')) tags.push('authentication')
-    if (text.includes('db') || text.includes('database')) tags.push('database')
-    if (text.includes('deploy')) tags.push('deployment')
-    if (text.includes('error') || text.includes('bug')) tags.push('debugging')
-    if (text.includes('slow') || text.includes('performance')) tags.push('performance')
-
-    return {
-      tags: tags.slice(0, 5), // Limit to 5 tags
-      confidence: Math.random() * 0.3 + 0.7 // 0.7-1.0
-    }
-  }
 
   async chatCompletion(prompt: string): Promise<ChatCompletionResponse> {
     try {
-      // Mock implementation for testing
-      if (this.endpoint.startsWith('mock://') || !this.client) {
-        return {
-          content: `Mock response for: ${prompt.substring(0, 50)}...`,
-          usage: {
-            prompt_tokens: 100,
-            completion_tokens: 50,
-            total_tokens: 150
-          }
-        }
-      }
-
-      // Production implementation using Azure OpenAI SDK
-      const response = await this.client.createChatCompletion({
+      const response = await this.client.chat.completions.create({
         model: this.deploymentName,
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.7,
         max_tokens: 500
       })
 
-      const responseContent = response.data?.choices?.[0]?.message?.content
+      const responseContent = response.choices?.[0]?.message?.content
       if (responseContent) {
         return {
           content: responseContent,
           usage: {
-            prompt_tokens: response.data?.usage?.prompt_tokens || 0,
-            completion_tokens: response.data?.usage?.completion_tokens || 0,
-            total_tokens: response.data?.usage?.total_tokens || 0
+            prompt_tokens: response.usage?.prompt_tokens || 0,
+            completion_tokens: response.usage?.completion_tokens || 0,
+            total_tokens: response.usage?.total_tokens || 0
           }
         }
       }
@@ -218,15 +143,7 @@ Tags should be lowercase and use common technical terms.`
       throw new Error('Invalid chat completion response')
     } catch (error) {
       console.error('Error in chat completion:', error)
-      // Fallback to mock for development
-      return {
-        content: `Fallback response for: ${prompt.substring(0, 50)}...`,
-        usage: {
-          prompt_tokens: 100,
-          completion_tokens: 50,
-          total_tokens: 150
-        }
-      }
+      throw error
     }
   }
 }

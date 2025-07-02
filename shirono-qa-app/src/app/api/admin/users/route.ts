@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { validateSession } from '@/lib/auth'
-import { getUsers, createUser, GetUsersQuery, UserCreateData } from '@/lib/admin'
+import { getUsers, createUser, updateUser, deleteUser, GetUsersQuery, UserCreateData, UserUpdateData } from '@/lib/admin'
 
 /**
  * GET /api/admin/users - 全ユーザー取得（管理者のみ）

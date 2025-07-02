@@ -110,6 +110,12 @@ export class InMemoryDataStore {
     container.set(id, item)
     return item
   }
+
+  async replaceItem<T>(containerId: string, id: string, item: T): Promise<T> {
+    const container = this.getContainer(containerId)
+    container.set(id, item)
+    return item
+  }
   
   async deleteItem(containerId: string, id: string): Promise<void> {
     const container = this.getContainer(containerId)
@@ -148,6 +154,7 @@ export const mockCosmosService = {
   queryItems: testDataStore.queryItems.bind(testDataStore),
   queryItemsWithPagination: testDataStore.queryItemsWithPagination.bind(testDataStore),
   updateItem: testDataStore.updateItem.bind(testDataStore),
+  replaceItem: testDataStore.replaceItem.bind(testDataStore),
   deleteItem: testDataStore.deleteItem.bind(testDataStore),
   initializeDatabase: jest.fn().mockResolvedValue(undefined),
   testConnection: jest.fn().mockResolvedValue(true),

@@ -55,8 +55,8 @@ export default function CommentForm({ questionId, answerId, onSuccess, onCancel 
         attachments
       }
       
-      // Mock authorId for testing
-      const result = await createComment(commentData, questionId, 'current-user-id')
+      // Note: This component is deprecated, use the main question detail page instead
+      throw new Error('CommentForm component is deprecated. Use question detail page for posting comments.')
       
       if (result.success) {
         onSuccess()

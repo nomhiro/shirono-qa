@@ -71,6 +71,7 @@ export interface UpdateQuestionRequest {
   content?: string
   priority?: QuestionPriority
   status?: QuestionStatus
+  attachments?: Attachment[]
 }
 
 export interface UpdateQuestionResult {

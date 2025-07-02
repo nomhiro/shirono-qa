@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { Box, Typography, CircularProgress } from '@mui/material'
+import AppHeader from '@/components/AppHeader'
 
 interface Question {
   id: string
@@ -27,6 +29,46 @@ export default function QuestionsPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('すべて')
   const router = useRouter()
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'unanswered': return '未回答'
+      case 'answered': return '回答済み'
+      case 'resolved': return '解決済み'
+      case 'rejected': return '却下'
+      case 'closed': return 'クローズ'
+      default: return status
+    }
+  }
+
+  const getPriorityLabel = (priority: string) => {
+    switch (priority) {
+      case 'high': return '高'
+      case 'medium': return '中'
+      case 'low': return '低'
+      default: return priority
+    }
+  }
+
+  const getStatusColorClass = (status: string) => {
+    switch (status) {
+      case 'unanswered': return 'bg-orange-100 text-orange-800'
+      case 'answered': return 'bg-blue-100 text-blue-800'
+      case 'resolved': return 'bg-green-100 text-green-800'
+      case 'rejected': return 'bg-red-100 text-red-800'
+      case 'closed': return 'bg-gray-100 text-gray-800'
+      default: return 'bg-gray-100 text-gray-800'
+    }
+  }
+
+  const getPriorityColorClass = (priority: string) => {
+    switch (priority) {
+      case 'high': return 'bg-red-100 text-red-800'
+      case 'medium': return 'bg-orange-100 text-orange-800'
+      case 'low': return 'bg-blue-100 text-blue-800'
+      default: return 'bg-gray-100 text-gray-800'
+    }
+  }
 
   useEffect(() => {
     checkAuth()
@@ -62,15 +104,22 @@ export default function QuestionsPage() {
   }
 
   if (isLoading) {
-    return <div>Loading...</div>
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <AppHeader title="質問一覧" />
+        <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
+          <CircularProgress />
+          <Typography variant="body1" sx={{ ml: 2 }}>Loading...</Typography>
+        </Box>
+      </div>
+    )
   }
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <AppHeader title="質問一覧" />
+      
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">質問一覧</h1>
-        </div>
 
         <div className="mb-6 flex flex-col sm:flex-row gap-4">
           <input
@@ -108,13 +157,45 @@ export default function QuestionsPage() {
         </div>
 
         <div className="bg-white shadow rounded-lg">
-          {questions.length === 0 ? (
-            <div className="p-8 text-center text-gray-500">
-              質問がありません
-            </div>
-          ) : (
-            <div className="divide-y divide-gray-200">
-              {questions.map((question) => (
+          {(() => {
+            // フィルター処理
+            let filteredQuestions = questions
+
+            // ステータスフィルター
+            if (statusFilter !== 'すべて') {
+              const statusMap: { [key: string]: string } = {
+                '未回答': 'unanswered',
+                '回答済み': 'answered', 
+                '解決済み': 'resolved',
+                '却下': 'rejected',
+                'クローズ': 'closed'
+              }
+              const statusValue = statusMap[statusFilter]
+              if (statusValue) {
+                filteredQuestions = filteredQuestions.filter(q => q.status === statusValue)
+              }
+            }
+
+            // 検索フィルター
+            if (searchQuery.trim()) {
+              const query = searchQuery.toLowerCase()
+              filteredQuestions = filteredQuestions.filter(q => 
+                q.title.toLowerCase().includes(query) ||
+                q.tags.some(tag => tag.toLowerCase().includes(query))
+              )
+            }
+
+            if (filteredQuestions.length === 0) {
+              return (
+                <div className="p-8 text-center text-gray-500">
+                  {questions.length === 0 ? '質問がありません' : '条件に一致する質問が見つかりません'}
+                </div>
+              )
+            }
+
+            return (
+              <div className="divide-y divide-gray-200">
+                {filteredQuestions.map((question) => (
                 <div key={question.id} className="p-6 hover:bg-gray-50">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
@@ -130,23 +211,11 @@ export default function QuestionsPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className={`px-2 py-1 rounded-full text-xs ${
-                        question.status === '未回答' 
-                          ? 'bg-red-100 text-red-800'
-                          : question.status === '回答済み'
-                          ? 'bg-blue-100 text-blue-800'
-                          : 'bg-green-100 text-green-800'
-                      }`}>
-                        {question.status}
+                      <span className={`px-2 py-1 rounded-full text-xs ${getStatusColorClass(question.status)}`}>
+                        {getStatusLabel(question.status)}
                       </span>
-                      <span className={`px-2 py-1 rounded-full text-xs ${
-                        question.priority === '高'
-                          ? 'bg-red-100 text-red-800'
-                          : question.priority === '中'
-                          ? 'bg-yellow-100 text-yellow-800'
-                          : 'bg-gray-100 text-gray-800'
-                      }`}>
-                        {question.priority}
+                      <span className={`px-2 py-1 rounded-full text-xs ${getPriorityColorClass(question.priority)}`}>
+                        {getPriorityLabel(question.priority)}
                       </span>
                     </div>
                   </div>
@@ -161,9 +230,10 @@ export default function QuestionsPage() {
                     ))}
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
+                ))}
+              </div>
+            )
+          })()}
         </div>
       </div>
     </div>

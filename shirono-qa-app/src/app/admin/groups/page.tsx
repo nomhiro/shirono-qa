@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import AppHeader from '@/components/AppHeader'
 import {
   Box,
   Typography,
@@ -21,8 +22,7 @@ import {
 import { Add as AddIcon, Group as GroupIcon } from '@mui/icons-material'
 import { Group } from '@/types/group'
 import { User } from '@/types/auth'
-import { validateSession } from '@/lib/auth'
-import { getGroups, createGroup, CreateGroupRequest } from '@/lib/groups'
+import { GroupCreateData } from '@/lib/admin'
 
 export default function GroupManagementPage() {
   const router = useRouter()
@@ -33,7 +33,7 @@ export default function GroupManagementPage() {
   const [error, setError] = useState<string | null>(null)
   const [showCreateDialog, setShowCreateDialog] = useState(false)
   const [creating, setCreating] = useState(false)
-  const [formData, setFormData] = useState<CreateGroupRequest>({
+  const [formData, setFormData] = useState<GroupCreateData>({
     name: '',
     description: ''
   })
@@ -48,18 +48,17 @@ export default function GroupManagementPage() {
       setLoading(true)
       setError(null)
       
-      // 認証チェック
-      const sessionToken = document.cookie
-        .split('; ')
-        .find((row) => row.startsWith('session='))
-        ?.split('=')[1] || ''
+      // 認証チェック - APIエンドポイントを使用
+      const authResponse = await fetch('/api/auth/me', {
+        credentials: 'include'
+      })
       
-      const authResult = await validateSession(sessionToken)
-      
-      if (!authResult.valid) {
+      if (!authResponse.ok) {
         router.push('/')
         return
       }
+      
+      const authResult = await authResponse.json()
       
       // 管理者権限チェック
       if (!authResult.user?.isAdmin) {
@@ -70,9 +69,18 @@ export default function GroupManagementPage() {
       setUser(authResult.user)
 
       // グループデータ取得
-      const groupsResult = await getGroups()
+      const response = await fetch('/api/admin/groups', {
+        credentials: 'include'
+      })
+
+      if (!response.ok) {
+        setError('Failed to load groups')
+        return
+      }
+
+      const groupsResult = await response.json()
       if (!groupsResult.success) {
-        setError(groupsResult.error || 'Failed to load groups')
+        setError(groupsResult.error?.message || 'Failed to load groups')
         return
       }
       
@@ -114,13 +122,21 @@ export default function GroupManagementPage() {
       setCreating(true)
       setError(null)
       
-      const result = await createGroup({
-        name: formData.name.trim(),
-        description: formData.description.trim()
+      const response = await fetch('/api/admin/groups', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          name: formData.name.trim(),
+          description: formData.description.trim()
+        })
       })
-      
-      if (!result.success) {
-        setError(result.error || 'Failed to create group')
+
+      if (!response.ok) {
+        const result = await response.json()
+        setError(result.error?.message || 'Failed to create group')
         return
       }
       
@@ -172,13 +188,21 @@ export default function GroupManagementPage() {
     )
   }
 
+  const breadcrumbItems = [
+    { label: 'ホーム', href: '/questions' },
+    { label: 'グループ管理', current: true }
+  ]
+
   return (
-    <Box p={3}>
-      {/* ページヘッダー */}
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4" component="h1">
-          Group Management
-        </Typography>
+    <div className="min-h-screen bg-gray-50">
+      <AppHeader breadcrumbItems={breadcrumbItems} />
+      
+      <Box p={3}>
+        {/* ページヘッダー */}
+        <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+          <Typography variant="h4" component="h1">
+            グループ管理
+          </Typography>
         <Button
           variant="contained"
           startIcon={<AddIcon />}
@@ -302,6 +326,7 @@ export default function GroupManagementPage() {
           </Button>
         </DialogActions>
       </Dialog>
-    </Box>
+      </Box>
+    </div>
   )
 }

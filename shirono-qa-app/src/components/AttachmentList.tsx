@@ -23,12 +23,7 @@ import {
   Slideshow as PresentationIcon,
   Code as CodeIcon,
 } from '@mui/icons-material'
-
-interface Attachment {
-  fileName: string
-  fileSize: number
-  blobUrl: string
-}
+import { Attachment } from '@/types/question'
 
 interface AttachmentListProps {
   attachments: Attachment[]
@@ -88,6 +83,8 @@ export default function AttachmentList({ attachments }: AttachmentListProps) {
   }
 
   const handleDownload = async (attachment: Attachment) => {
+    console.log('Download request for attachment:', attachment)
+    
     setDownloadingFiles(prev => new Set(prev).add(attachment.fileName))
     setErrors(prev => {
       const newErrors = { ...prev }
@@ -101,6 +98,7 @@ export default function AttachmentList({ attachments }: AttachmentListProps) {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify({
           blobUrl: attachment.blobUrl,
           fileName: attachment.fileName
@@ -150,10 +148,6 @@ export default function AttachmentList({ attachments }: AttachmentListProps) {
 
   return (
     <Box sx={{ mt: 3 }}>
-      <Typography variant="h6" gutterBottom>
-        添付ファイル ({attachments.length})
-      </Typography>
-      
       <List>
         {attachments.map((attachment, index) => (
           <ListItem key={index} divider>

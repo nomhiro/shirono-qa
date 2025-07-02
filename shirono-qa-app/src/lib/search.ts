@@ -11,49 +11,7 @@ import {
 } from '../types/search'
 import { Question, QuestionStatus, QuestionPriority } from '../types/question'
 import { embedText, generateTags } from './openai'
-
-// Mock data for testing
-const mockQuestions: Question[] = [
-  {
-    id: 'q1',
-    title: 'JWT Authentication in Next.js',
-    content: 'How to implement JWT authentication with proper security practices in Next.js applications?',
-    authorId: 'user1',
-    groupId: 'group1',
-    status: QuestionStatus.ANSWERED,
-    priority: QuestionPriority.HIGH,
-    tags: ['next.js', 'authentication', 'security', 'jwt'],
-    attachments: [],
-    createdAt: new Date('2024-01-01'),
-    updatedAt: new Date('2024-01-01')
-  },
-  {
-    id: 'q2',
-    title: 'Database optimization techniques',
-    content: 'What are the best practices for optimizing database queries and improving performance?',
-    authorId: 'user2',
-    groupId: 'group1',
-    status: QuestionStatus.RESOLVED,
-    priority: QuestionPriority.MEDIUM,
-    tags: ['database', 'performance', 'optimization', 'sql'],
-    attachments: [],
-    createdAt: new Date('2024-01-02'),
-    updatedAt: new Date('2024-01-02')
-  },
-  {
-    id: 'q3',
-    title: 'React hooks best practices',
-    content: 'Guidelines for using React hooks effectively and avoiding common pitfalls',
-    authorId: 'user3',
-    groupId: 'group1',
-    status: QuestionStatus.UNANSWERED,
-    priority: QuestionPriority.LOW,
-    tags: ['react', 'hooks', 'frontend', 'javascript'],
-    attachments: [],
-    createdAt: new Date('2024-01-03'),
-    updatedAt: new Date('2024-01-03')
-  }
-]
+import { getCosmosService } from './cosmos'
 
 export async function searchQuestions(query: SearchQuery): Promise<SearchResponse> {
   try {
@@ -65,52 +23,82 @@ export async function searchQuestions(query: SearchQuery): Promise<SearchRespons
       }
     }
 
+    const cosmosService = getCosmosService()
+    
+    // Build SQL query for Cosmos DB
+    let sqlQuery = 'SELECT * FROM c'
+    const parameters: any[] = []
     const searchTerm = query.q.toLowerCase()
-    let results = mockQuestions.slice()
-
-    // Filter by search term
-    results = results.filter(question => 
-      question.title.toLowerCase().includes(searchTerm) ||
-      question.content.toLowerCase().includes(searchTerm) ||
-      question.tags.some(tag => tag.toLowerCase().includes(searchTerm))
-    )
-
+    
+    // Add search conditions
+    let whereConditions: string[] = []
+    
+    // Full text search
+    whereConditions.push('(CONTAINS(LOWER(c.title), @searchTerm) OR CONTAINS(LOWER(c.content), @searchTerm) OR ARRAY_CONTAINS(c.tags, @searchTerm, true))')
+    parameters.push({ name: '@searchTerm', value: searchTerm })
+    
     // Apply filters
-    if (query.tags && query.tags.length > 0) {
-      results = results.filter(question =>
-        query.tags!.some(tag => 
-          question.tags.some(qTag => qTag.toLowerCase().includes(tag.toLowerCase()))
-        )
-      )
-    }
-
     if (query.status) {
-      results = results.filter(question => question.status === query.status)
+      whereConditions.push('c.status = @status')
+      parameters.push({ name: '@status', value: query.status })
     }
-
+    
     if (query.priority) {
-      results = results.filter(question => question.priority === query.priority)
+      whereConditions.push('c.priority = @priority')
+      parameters.push({ name: '@priority', value: query.priority })
     }
-
+    
     if (query.authorId) {
-      results = results.filter(question => question.authorId === query.authorId)
+      whereConditions.push('c.authorId = @authorId')
+      parameters.push({ name: '@authorId', value: query.authorId })
     }
-
+    
     if (query.groupId) {
-      results = results.filter(question => question.groupId === query.groupId)
+      whereConditions.push('c.groupId = @groupId')
+      parameters.push({ name: '@groupId', value: query.groupId })
     }
-
+    
     // Date filtering
     if (query.dateFrom) {
-      results = results.filter(question => question.createdAt >= query.dateFrom!)
+      whereConditions.push('c.createdAt >= @dateFrom')
+      parameters.push({ name: '@dateFrom', value: query.dateFrom.toISOString() })
     }
-
+    
     if (query.dateTo) {
-      results = results.filter(question => question.createdAt <= query.dateTo!)
+      whereConditions.push('c.createdAt <= @dateTo')
+      parameters.push({ name: '@dateTo', value: query.dateTo.toISOString() })
     }
-
+    
+    // Build final query
+    if (whereConditions.length > 0) {
+      sqlQuery += ' WHERE ' + whereConditions.join(' AND ')
+    }
+    
+    // Add sorting
+    const sortBy = query.sortBy || SearchSortField.RELEVANCE
+    const sortOrder = query.sortOrder || 'desc'
+    
+    switch (sortBy) {
+      case SearchSortField.CREATED_AT:
+        sqlQuery += ` ORDER BY c.createdAt ${sortOrder.toUpperCase()}`
+        break
+      case SearchSortField.UPDATED_AT:
+        sqlQuery += ` ORDER BY c.updatedAt ${sortOrder.toUpperCase()}`
+        break
+      case SearchSortField.PRIORITY:
+        // Custom priority ordering (high=3, medium=2, low=1)
+        sqlQuery += ` ORDER BY (c.priority = "high" ? 3 : (c.priority = "medium" ? 2 : 1)) ${sortOrder.toUpperCase()}`
+        break
+      default:
+        // For relevance, use created date as fallback
+        sqlQuery += ` ORDER BY c.createdAt ${sortOrder.toUpperCase()}`
+    }
+    
+    // Execute query
+    const questions = await cosmosService.queryItems<Question>('questions', sqlQuery, parameters)
+    
     // Calculate relevance scores and create search results
-    const searchResults: SearchResult[] = results.map(question => {
+    const searchResults: SearchResult[] = questions.map(question => {
       let score = 0
 
       // Title match gets higher score
@@ -140,35 +128,13 @@ export async function searchQuestions(query: SearchQuery): Promise<SearchRespons
         snippet: generateSnippet(question.content, searchTerm)
       }
     })
-
-    // Sort results
-    const sortBy = query.sortBy || SearchSortField.RELEVANCE
-    const sortOrder = query.sortOrder || 'desc'
-
-    searchResults.sort((a, b) => {
-      let comparison = 0
-
-      switch (sortBy) {
-        case SearchSortField.RELEVANCE:
-          comparison = a.score - b.score
-          break
-        case SearchSortField.CREATED_AT:
-          comparison = a.question.createdAt.getTime() - b.question.createdAt.getTime()
-          break
-        case SearchSortField.UPDATED_AT:
-          comparison = a.question.updatedAt.getTime() - b.question.updatedAt.getTime()
-          break
-        case SearchSortField.PRIORITY:
-          const priorityOrder = { high: 3, medium: 2, low: 1 }
-          comparison = priorityOrder[a.question.priority as keyof typeof priorityOrder] - 
-                      priorityOrder[b.question.priority as keyof typeof priorityOrder]
-          break
-        default:
-          comparison = a.score - b.score
-      }
-
-      return sortOrder === 'desc' ? -comparison : comparison
-    })
+    
+    // If sorting by relevance, sort by score
+    if (sortBy === SearchSortField.RELEVANCE) {
+      searchResults.sort((a, b) => {
+        return sortOrder === 'desc' ? b.score - a.score : a.score - b.score
+      })
+    }
 
     // Pagination
     const page = query.page || 1
@@ -182,7 +148,7 @@ export async function searchQuestions(query: SearchQuery): Promise<SearchRespons
     return {
       success: true,
       results: paginatedResults,
-      total: results.length,
+      total: searchResults.length,
       page,
       limit,
       query: query.q,
@@ -205,35 +171,72 @@ export async function findSimilarQuestions(
   try {
     // Generate embedding for the query
     const queryVector = await embedText(queryText)
-
-    // Mock vector search implementation
-    const candidates = mockQuestions.filter(q => q.id !== excludeQuestionId)
+    const cosmosService = getCosmosService()
     
-    const similarQuestions = candidates.map(question => {
-      // Generate mock vector for the question (in production, this would be stored)
-      const questionVector = generateMockVector(question.title + ' ' + question.content)
-      
-      // Calculate similarity
-      const similarity = calculateSimilarity(queryVector, questionVector)
-      
-      return {
-        id: question.id,
-        title: question.title,
-        content: question.content,
-        similarity,
-        snippet: generateSnippet(question.content),
-        status: question.status,
-        answersCount: Math.floor(Math.random() * 5) + 1, // Mock answer count
-        createdAt: question.createdAt
-      }
-    })
-    .filter(q => q.similarity >= 0.7) // Filter by threshold
-    .sort((a, b) => b.similarity - a.similarity) // Sort by similarity descending
-    .slice(0, limit)
+    // Get all questions except the excluded one
+    let sqlQuery = 'SELECT * FROM c'
+    const parameters: any[] = []
+    
+    if (excludeQuestionId) {
+      sqlQuery += ' WHERE c.id != @excludeId'
+      parameters.push({ name: '@excludeId', value: excludeQuestionId })
+    }
+    
+    const questions = await cosmosService.queryItems<Question>('questions', sqlQuery, parameters)
+    
+    // Calculate similarity for each question
+    const similarQuestions = await Promise.all(
+      questions.map(async (question) => {
+        try {
+          // Generate embedding for the question
+          const questionText = question.title + ' ' + question.content
+          const questionVector = await embedText(questionText)
+          
+          // Calculate similarity
+          const similarity = calculateSimilarity(queryVector, questionVector)
+          
+          // Get answer count from answers collection
+          const answerQuery = 'SELECT VALUE COUNT(1) FROM c WHERE c.questionId = @questionId'
+          const answerParams = [{ name: '@questionId', value: question.id }]
+          const answerCountResult = await cosmosService.queryItems<number>('answers', answerQuery, answerParams)
+          const answersCount = answerCountResult[0] || 0
+          
+          return {
+            id: question.id,
+            title: question.title,
+            content: question.content,
+            similarity,
+            snippet: generateSnippet(question.content),
+            status: question.status,
+            answersCount,
+            createdAt: question.createdAt
+          }
+        } catch (error) {
+          console.error('Error processing question for similarity:', error)
+          // Return with low similarity if processing fails
+          return {
+            id: question.id,
+            title: question.title,
+            content: question.content,
+            similarity: 0,
+            snippet: generateSnippet(question.content),
+            status: question.status,
+            answersCount: 0,
+            createdAt: question.createdAt
+          }
+        }
+      })
+    )
+    
+    // Filter by threshold and sort by similarity
+    const filteredQuestions = similarQuestions
+      .filter(q => q.similarity >= 0.7) // Filter by threshold
+      .sort((a, b) => b.similarity - a.similarity) // Sort by similarity descending
+      .slice(0, limit)
 
     return {
       success: true,
-      questions: similarQuestions
+      questions: filteredQuestions
     }
   } catch (error) {
     console.error('Error finding similar questions:', error)
@@ -281,21 +284,46 @@ export async function getSearchSuggestions(query: string): Promise<SearchSuggest
       }
     }
 
-    // Mock suggestions based on common queries
-    const commonQueries = [
-      'authentication', 'authorization', 'next.js setup', 'react hooks',
-      'database optimization', 'performance tuning', 'deployment issues',
-      'cors errors', 'jwt implementation', 'oauth setup', 'testing strategies',
-      'debugging tips', 'frontend best practices', 'backend architecture'
-    ]
-
-    const suggestions = commonQueries
-      .filter(suggestion => suggestion.toLowerCase().includes(query.toLowerCase()))
-      .slice(0, 10)
-
+    const cosmosService = getCosmosService()
+    
+    // Get suggestions from existing question titles and tags
+    const sqlQuery = `
+      SELECT DISTINCT c.title, c.tags 
+      FROM c 
+      WHERE CONTAINS(LOWER(c.title), @query) OR ARRAY_CONTAINS(c.tags, @query, true)
+      ORDER BY c.createdAt DESC
+    `
+    const parameters = [{ name: '@query', value: query.toLowerCase() }]
+    
+    const results = await cosmosService.queryItems<{ title: string; tags: string[] }>('questions', sqlQuery, parameters)
+    
+    const suggestions: string[] = []
+    
+    // Add matching titles
+    results.forEach(result => {
+      if (result.title.toLowerCase().includes(query.toLowerCase())) {
+        suggestions.push(result.title)
+      }
+      
+      // Add matching tags
+      result.tags.forEach(tag => {
+        if (tag.toLowerCase().includes(query.toLowerCase()) && !suggestions.includes(tag)) {
+          suggestions.push(tag)
+        }
+      })
+    })
+    
+    // Add typo corrections
+    const typoCorrection = generateSearchSuggestions(query)
+    typoCorrection.forEach(correction => {
+      if (!suggestions.includes(correction)) {
+        suggestions.push(correction)
+      }
+    })
+    
     return {
       success: true,
-      suggestions
+      suggestions: suggestions.slice(0, 10)
     }
   } catch (error) {
     console.error('Error getting search suggestions:', error)
@@ -403,27 +431,6 @@ function generateSnippet(content: string, searchTerm?: string, maxLength = 200):
   return snippet
 }
 
-function generateMockVector(text: string): number[] {
-  // Generate a deterministic mock vector based on text content
-  const hash = simpleHash(text)
-  const vector = new Array(3072)
-  
-  for (let i = 0; i < 3072; i++) {
-    vector[i] = Math.sin(hash + i) * Math.cos(hash / (i + 1))
-  }
-  
-  return vector
-}
-
-function simpleHash(str: string): number {
-  let hash = 0
-  for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i)
-    hash = ((hash << 5) - hash) + char
-    hash = hash & hash // Convert to 32-bit integer
-  }
-  return hash
-}
 
 function generateSearchSuggestions(query: string): string[] {
   const typoMap: Record<string, string> = {

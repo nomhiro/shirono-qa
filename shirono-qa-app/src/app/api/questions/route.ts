@@ -42,14 +42,18 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search')
 
     // 質問データ取得
-    const result = await getQuestions({
+    const queryData = {
       page,
       limit,
       groupId: authResult.user.isAdmin ? undefined : authResult.user.groupId,
       status: status as any,
       priority: priority as any,
       search: search || undefined
-    })
+    }
+    
+    console.log('Getting questions with query:', queryData)
+    const result = await getQuestions(queryData)
+    console.log('Questions result:', { success: result.success, count: result.questions?.length })
 
     if (!result.success) {
       return NextResponse.json(

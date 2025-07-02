@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import AppHeader from '@/components/AppHeader'
 import {
   Box,
   Typography,
@@ -36,8 +37,7 @@ import {
   AdminPanelSettings as AdminIcon,
 } from '@mui/icons-material'
 import { User, Group } from '@/types/auth'
-import { validateSession } from '@/lib/auth'
-import { getUsers, createUser, updateUser, deleteUser, getGroups, UserCreateData, UserUpdateData } from '@/lib/admin'
+import { UserCreateData, UserUpdateData } from '@/lib/admin'
 
 export default function AdminUsersPage() {
   const router = useRouter()
@@ -75,20 +75,19 @@ export default function AdminUsersPage() {
     try {
       setLoading(true)
       
-      // 認証チェック
-      const authResult = await validateSession(
-        document.cookie
-          .split('; ')
-          .find((row) => row.startsWith('session='))
-          ?.split('=')[1] || ''
-      )
+      // 認証チェック - APIエンドポイントを使用
+      const authResponse = await fetch('/api/auth/me', {
+        credentials: 'include'
+      })
       
-      if (!authResult.valid || !authResult.user) {
+      if (!authResponse.ok) {
         router.push('/')
         return
       }
+      
+      const authResult = await authResponse.json()
 
-      if (!authResult.user.isAdmin) {
+      if (!authResult.user?.isAdmin) {
         router.push('/questions')
         return
       }
@@ -96,18 +95,35 @@ export default function AdminUsersPage() {
       setCurrentUser(authResult.user)
 
       // ユーザーとグループデータ取得
-      const [usersResult, groupsResult] = await Promise.all([
-        getUsers(),
-        getGroups()
+      const [usersResponse, groupsResponse] = await Promise.all([
+        fetch('/api/admin/users', {
+          credentials: 'include'
+        }),
+        fetch('/api/admin/groups', {
+          credentials: 'include'
+        })
       ])
 
+      if (!usersResponse.ok) {
+        setError('Failed to load users')
+        return
+      }
+
+      if (!groupsResponse.ok) {
+        setError('Failed to load groups')
+        return
+      }
+
+      const usersResult = await usersResponse.json()
+      const groupsResult = await groupsResponse.json()
+
       if (!usersResult.success) {
-        setError(usersResult.error || 'Failed to load users')
+        setError(usersResult.error?.message || 'Failed to load users')
         return
       }
 
       if (!groupsResult.success) {
-        setError(groupsResult.error || 'Failed to load groups')
+        setError(groupsResult.error?.message || 'Failed to load groups')
         return
       }
 
@@ -172,12 +188,16 @@ export default function AdminUsersPage() {
 
     try {
       setSubmitting(true)
-      const result = await deleteUser(user.id)
+      const response = await fetch(`/api/admin/users/${user.id}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      })
       
-      if (result.success) {
+      if (response.ok) {
         setUsers(users.filter(u => u.id !== user.id))
       } else {
-        setError(result.error || 'Failed to delete user')
+        const result = await response.json()
+        setError(result.error?.message || 'Failed to delete user')
       }
     } catch (err) {
       console.error('Error deleting user:', err)
@@ -203,14 +223,23 @@ export default function AdminUsersPage() {
         isAdmin: formData.isAdmin
       }
 
-      const result = await createUser(userData)
-      
-      if (result.success) {
-        setUsers([...users, result.user!])
+      const response = await fetch('/api/admin/users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify(userData)
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        setUsers([...users, result.user])
         setIsCreateDialogOpen(false)
         resetFormData()
       } else {
-        setError(result.error || 'Failed to create user')
+        const result = await response.json()
+        setError(result.error?.message || 'Failed to create user')
       }
     } catch (err) {
       console.error('Error creating user:', err)
@@ -235,15 +264,24 @@ export default function AdminUsersPage() {
         isAdmin: formData.isAdmin
       }
 
-      const result = await updateUser(editingUser.id, updateData)
-      
-      if (result.success) {
-        setUsers(users.map(u => u.id === editingUser.id ? result.user! : u))
+      const response = await fetch(`/api/admin/users/${editingUser.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify(updateData)
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        setUsers(users.map(u => u.id === editingUser.id ? result.user : u))
         setIsEditDialogOpen(false)
         setEditingUser(null)
         resetFormData()
       } else {
-        setError(result.error || 'Failed to update user')
+        const result = await response.json()
+        setError(result.error?.message || 'Failed to update user')
       }
     } catch (err) {
       console.error('Error updating user:', err)
@@ -270,12 +308,20 @@ export default function AdminUsersPage() {
     )
   }
 
+  const breadcrumbItems = [
+    { label: 'ホーム', href: '/questions' },
+    { label: 'ユーザー管理', current: true }
+  ]
+
   return (
-    <Box p={3}>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4" component="h1">
-          User Management
-        </Typography>
+    <div className="min-h-screen bg-gray-50">
+      <AppHeader breadcrumbItems={breadcrumbItems} />
+      
+      <Box p={3}>
+        <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+          <Typography variant="h4" component="h1">
+            ユーザー管理
+          </Typography>
         <Button
           variant="contained"
           startIcon={<AddIcon />}
@@ -524,6 +570,7 @@ export default function AdminUsersPage() {
           </Button>
         </DialogActions>
       </Dialog>
-    </Box>
+      </Box>
+    </div>
   )
 }

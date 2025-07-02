@@ -19,7 +19,7 @@ import {
   ALLOWED_FILE_TYPES 
 } from './validation'
 import { getCosmosService } from './cosmos'
-import { AppError, ErrorCode } from './errors'
+import { isAppError } from './errors'
 
 export function validateAnswerData(data: CreateAnswerRequest) {
   const contentValidation = createValidator<string>()
@@ -108,17 +108,14 @@ export async function createAnswer(
       questionId,
       content: data.content.trim(),
       authorId,
-      attachments: data.attachments?.map(file => ({
-        fileName: file.name,
-        fileSize: file.size,
-        blobUrl: `mock://blob/${Date.now()}_${file.name}`,
-        contentType: file.type
-      })) || [],
+      attachments: [], // ファイルアップロードは別途専用APIで処理
       createdAt: new Date(),
       updatedAt: new Date()
     }
 
+    console.log('About to save answer to Cosmos DB:', answer)
     const createdAnswer = await cosmosService.createItem<Answer>('answers', answer)
+    console.log('Answer created in Cosmos DB:', createdAnswer)
 
     return {
       success: true,
@@ -126,7 +123,7 @@ export async function createAnswer(
     }
   } catch (error) {
     console.error('Error creating answer:', error)
-    if (error instanceof AppError) {
+    if (isAppError(error)) {
       return {
         success: false,
         error: error.message
@@ -139,35 +136,77 @@ export async function createAnswer(
   }
 }
 
-export async function updateAnswer(
-  answerId: string,
-  data: UpdateAnswerRequest
-): Promise<UpdateAnswerResult> {
+export async function getAnswerById(answerId: string): Promise<{ success: boolean; answer?: Answer; error?: string }> {
   try {
-    // Mock implementation - check if answer exists
-    if (answerId === 'nonexistent') {
+    const cosmosService = getCosmosService()
+    
+    const query = 'SELECT * FROM c WHERE c.id = @id'
+    const parameters = [{ name: '@id', value: answerId }]
+    const answers = await cosmosService.queryItems<Answer>('answers', query, parameters)
+    
+    if (!answers || answers.length === 0) {
       return {
         success: false,
         error: 'Answer not found'
       }
     }
 
-    // Mock updated answer
-    const answer: Answer = {
-      id: answerId,
-      questionId: 'question123',
-      content: data.content || 'Mock answer content',
-      authorId: 'user123',
-      attachments: [],
-      createdAt: new Date('2024-01-01'),
-      updatedAt: new Date()
-    }
-
     return {
       success: true,
-      answer
+      answer: answers[0]
     }
   } catch (error) {
+    console.error('Error getting answer by ID:', error)
+    return {
+      success: false,
+      error: 'Failed to get answer'
+    }
+  }
+}
+
+export async function updateAnswer(
+  answerId: string,
+  data: UpdateAnswerRequest
+): Promise<UpdateAnswerResult> {
+  try {
+    const cosmosService = getCosmosService()
+    
+    // Get existing answer
+    const query = 'SELECT * FROM c WHERE c.id = @id'
+    const parameters = [{ name: '@id', value: answerId }]
+    const existingAnswers = await cosmosService.queryItems<Answer>('answers', query, parameters)
+    
+    if (!existingAnswers || existingAnswers.length === 0) {
+      return {
+        success: false,
+        error: 'Answer not found'
+      }
+    }
+    
+    const existingAnswer = existingAnswers[0]
+    
+    // Update answer
+    const updatedAnswer: Answer = {
+      ...existingAnswer,
+      content: data.content || existingAnswer.content,
+      ...(data.attachments !== undefined && { attachments: data.attachments }),
+      updatedAt: new Date()
+    }
+    
+    const result = await cosmosService.updateItem('answers', answerId, updatedAnswer, existingAnswer.questionId)
+    
+    return {
+      success: true,
+      answer: result
+    }
+  } catch (error) {
+    console.error('Error updating answer:', error)
+    if (isAppError(error)) {
+      return {
+        success: false,
+        error: error.message
+      }
+    }
     return {
       success: false,
       error: 'Failed to update answer'
@@ -177,17 +216,36 @@ export async function updateAnswer(
 
 export async function deleteAnswer(answerId: string): Promise<DeleteAnswerResult> {
   try {
-    if (answerId === 'nonexistent') {
+    const cosmosService = getCosmosService()
+    
+    // Get existing answer to find questionId (partition key)
+    const query = 'SELECT * FROM c WHERE c.id = @id'
+    const parameters = [{ name: '@id', value: answerId }]
+    const existingAnswers = await cosmosService.queryItems<Answer>('answers', query, parameters)
+    
+    if (!existingAnswers || existingAnswers.length === 0) {
       return {
         success: false,
         error: 'Answer not found'
       }
     }
-
+    
+    const existingAnswer = existingAnswers[0]
+    
+    // Delete answer from Cosmos DB
+    await cosmosService.deleteItem('answers', answerId, existingAnswer.questionId)
+    
     return {
       success: true
     }
   } catch (error) {
+    console.error('Error deleting answer:', error)
+    if (isAppError(error)) {
+      return {
+        success: false,
+        error: error.message
+      }
+    }
     return {
       success: false,
       error: 'Failed to delete answer'
@@ -197,40 +255,29 @@ export async function deleteAnswer(answerId: string): Promise<DeleteAnswerResult
 
 export async function getAnswersByQuestion(questionId: string): Promise<GetAnswersResult> {
   try {
-    if (questionId === 'no-answers-question') {
+    if (!questionId || typeof questionId !== 'string') {
       return {
-        success: true,
-        answers: []
+        success: false,
+        error: 'Valid question ID is required'
       }
     }
 
-    // Mock answers
-    const answers: Answer[] = [
-      {
-        id: 'answer1',
-        questionId,
-        content: 'This is the first answer',
-        authorId: 'user1',
-        attachments: [],
-        createdAt: new Date('2024-01-01'),
-        updatedAt: new Date('2024-01-01')
-      },
-      {
-        id: 'answer2',
-        questionId,
-        content: 'This is the second answer',
-        authorId: 'user2',
-        attachments: [],
-        createdAt: new Date('2024-01-02'),
-        updatedAt: new Date('2024-01-02')
-      }
-    ]
+    const cosmosService = getCosmosService()
+    
+    // Cosmos DBから実際の回答を取得（投稿順）
+    const query = 'SELECT * FROM c WHERE c.questionId = @questionId ORDER BY c.createdAt ASC'
+    const parameters = [{ name: '@questionId', value: questionId }]
+    
+    console.log('Querying answers for question:', questionId)
+    const answers = await cosmosService.queryItems<Answer>('answers', query, parameters)
+    console.log('Found answers:', answers.length)
 
     return {
       success: true,
       answers
     }
   } catch (error) {
+    console.error('Failed to get answers by question:', error)
     return {
       success: false,
       error: 'Failed to get answers'
@@ -267,25 +314,26 @@ export async function createComment(
       }
     }
 
-    // Mock implementation - create new comment
+    const cosmosService = getCosmosService()
+
+    // Create new comment
     const comment: Comment = {
       id: `comment_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       questionId,
       answerId: data.answerId,
       content: data.content.trim(),
       authorId,
-      attachments: data.attachments?.map(file => ({
-        fileName: file.name,
-        fileSize: file.size,
-        blobUrl: `mock://blob/${Date.now()}_${file.name}`,
-        contentType: file.type
-      })) || [],
+      attachments: [], // ファイルアップロードは別途専用APIで処理
       createdAt: new Date()
     }
 
+    console.log('About to save comment to Cosmos DB:', comment)
+    const createdComment = await cosmosService.createItem<Comment>('comments', comment)
+    console.log('Comment created in Cosmos DB:', createdComment)
+
     return {
       success: true,
-      comment
+      comment: createdComment
     }
   } catch (error) {
     console.error('Error creating comment:', error)
@@ -296,9 +344,15 @@ export async function createComment(
   }
 }
 
-export async function deleteComment(commentId: string): Promise<DeleteCommentResult> {
+export async function getCommentById(commentId: string): Promise<{ success: boolean; comment?: Comment; error?: string }> {
   try {
-    if (commentId === 'nonexistent') {
+    const cosmosService = getCosmosService()
+    
+    const query = 'SELECT * FROM c WHERE c.id = @id'
+    const parameters = [{ name: '@id', value: commentId }]
+    const comments = await cosmosService.queryItems<Comment>('comments', query, parameters)
+    
+    if (!comments || comments.length === 0) {
       return {
         success: false,
         error: 'Comment not found'
@@ -306,9 +360,100 @@ export async function deleteComment(commentId: string): Promise<DeleteCommentRes
     }
 
     return {
+      success: true,
+      comment: comments[0]
+    }
+  } catch (error) {
+    console.error('Error getting comment by ID:', error)
+    return {
+      success: false,
+      error: 'Failed to get comment'
+    }
+  }
+}
+
+export async function updateComment(
+  commentId: string,
+  data: { content?: string; attachments?: any[] }
+): Promise<{ success: boolean; comment?: Comment; error?: string }> {
+  try {
+    const cosmosService = getCosmosService()
+    
+    // Get existing comment
+    const query = 'SELECT * FROM c WHERE c.id = @id'
+    const parameters = [{ name: '@id', value: commentId }]
+    const existingComments = await cosmosService.queryItems<Comment>('comments', query, parameters)
+    
+    if (!existingComments || existingComments.length === 0) {
+      return {
+        success: false,
+        error: 'Comment not found'
+      }
+    }
+    
+    const existingComment = existingComments[0]
+    
+    // Update comment
+    const updatedComment: Comment = {
+      ...existingComment,
+      content: data.content || existingComment.content,
+      ...(data.attachments !== undefined && { attachments: data.attachments }),
+      updatedAt: new Date()
+    }
+    
+    const result = await cosmosService.updateItem('comments', commentId, updatedComment, existingComment.questionId)
+    
+    return {
+      success: true,
+      comment: result
+    }
+  } catch (error) {
+    console.error('Error updating comment:', error)
+    if (isAppError(error)) {
+      return {
+        success: false,
+        error: error.message
+      }
+    }
+    return {
+      success: false,
+      error: 'Failed to update comment'
+    }
+  }
+}
+
+export async function deleteComment(commentId: string): Promise<DeleteCommentResult> {
+  try {
+    const cosmosService = getCosmosService()
+    
+    // Get existing comment to find questionId (partition key)
+    const query = 'SELECT * FROM c WHERE c.id = @id'
+    const parameters = [{ name: '@id', value: commentId }]
+    const existingComments = await cosmosService.queryItems<Comment>('comments', query, parameters)
+    
+    if (!existingComments || existingComments.length === 0) {
+      return {
+        success: false,
+        error: 'Comment not found'
+      }
+    }
+    
+    const existingComment = existingComments[0]
+    
+    // Delete comment from Cosmos DB
+    await cosmosService.deleteItem('comments', commentId, existingComment.questionId)
+    
+    return {
       success: true
     }
   } catch (error) {
+    console.error('Error deleting comment:', error)
+    if (isAppError(error)) {
+      return {
+        success: false,
+        error: error.message
+      }
+    }
     return {
       success: false,
       error: 'Failed to delete comment'
@@ -318,23 +463,29 @@ export async function deleteComment(commentId: string): Promise<DeleteCommentRes
 
 export async function getCommentsByQuestion(questionId: string): Promise<GetCommentsResult> {
   try {
-    // Mock comments for question
-    const comments: Comment[] = [
-      {
-        id: 'comment1',
-        questionId,
-        content: 'This is a comment on the question',
-        authorId: 'user1',
-        attachments: [],
-        createdAt: new Date('2024-01-01')
+    if (!questionId || typeof questionId !== 'string') {
+      return {
+        success: false,
+        error: 'Valid question ID is required'
       }
-    ]
+    }
+
+    const cosmosService = getCosmosService()
+    
+    // Cosmos DBから実際のコメントを取得（投稿順）
+    const query = 'SELECT * FROM c WHERE c.questionId = @questionId ORDER BY c.createdAt ASC'
+    const parameters = [{ name: '@questionId', value: questionId }]
+    
+    console.log('Querying comments for question:', questionId)
+    const comments = await cosmosService.queryItems<Comment>('comments', query, parameters)
+    console.log('Found comments:', comments.length)
 
     return {
       success: true,
       comments
     }
   } catch (error) {
+    console.error('Failed to get comments by question:', error)
     return {
       success: false,
       error: 'Failed to get comments'
@@ -344,24 +495,29 @@ export async function getCommentsByQuestion(questionId: string): Promise<GetComm
 
 export async function getCommentsByAnswer(answerId: string): Promise<GetCommentsResult> {
   try {
-    // Mock comments for answer
-    const comments: Comment[] = [
-      {
-        id: 'comment2',
-        questionId: 'question123',
-        answerId,
-        content: 'This is a comment on the answer',
-        authorId: 'user2',
-        attachments: [],
-        createdAt: new Date('2024-01-01')
+    if (!answerId || typeof answerId !== 'string') {
+      return {
+        success: false,
+        error: 'Valid answer ID is required'
       }
-    ]
+    }
+
+    const cosmosService = getCosmosService()
+    
+    // Cosmos DBから実際のコメントを取得（answerId で絞り込み、投稿順）
+    const query = 'SELECT * FROM c WHERE c.answerId = @answerId ORDER BY c.createdAt ASC'
+    const parameters = [{ name: '@answerId', value: answerId }]
+    
+    console.log('Querying comments for answer:', answerId)
+    const comments = await cosmosService.queryItems<Comment>('comments', query, parameters)
+    console.log('Found comments:', comments.length)
 
     return {
       success: true,
       comments
     }
   } catch (error) {
+    console.error('Failed to get comments by answer:', error)
     return {
       success: false,
       error: 'Failed to get comments'

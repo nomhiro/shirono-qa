@@ -4,9 +4,12 @@ import { getQuestion, updateQuestion, deleteQuestion, validateQuestionData } fro
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
+    // paramsを待機
+    const params = await context.params
+    
     // 認証チェック
     const sessionToken = request.cookies.get('session')?.value
     if (!sessionToken) {
@@ -63,6 +66,12 @@ export async function GET(
       )
     }
 
+    console.log('Returning question with attachments:', {
+      questionId: question.id,
+      attachmentsCount: question.attachments?.length || 0,
+      attachments: question.attachments
+    })
+
     return NextResponse.json({
       success: true,
       question
@@ -84,9 +93,12 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
+    // paramsを待機
+    const params = await context.params
+    
     // 認証チェック
     const sessionToken = request.cookies.get('session')?.value
     if (!sessionToken) {
@@ -130,22 +142,31 @@ export async function PUT(
 
     const existingQuestion = questionResult.question!
 
-    // 権限チェック：作成者または管理者のみ
-    if (!authResult.user.isAdmin && existingQuestion.authorId !== authResult.user.id) {
+    // リクエストボディ取得
+    const body = await request.json()
+    const { title, content, priority, status } = body
+
+    // 権限チェック
+    const isAdmin = authResult.user.isAdmin
+    const isAuthor = existingQuestion.authorId === authResult.user.id
+    const isGroupMember = existingQuestion.groupId === authResult.user.groupId
+    
+    // ステータス変更のみの場合は同じグループのユーザーも許可
+    const isStatusOnlyUpdate = status !== undefined && title === undefined && content === undefined && priority === undefined
+    
+    if (!isAdmin && !isAuthor && !(isGroupMember && isStatusOnlyUpdate)) {
       return NextResponse.json(
         { 
           error: { 
             code: 'FORBIDDEN', 
-            message: 'Only the question author or admin can update this question' 
+            message: isStatusOnlyUpdate 
+              ? 'Only the question author, group members, or admin can change question status'
+              : 'Only the question author or admin can update this question' 
           } 
         },
         { status: 403 }
       )
     }
-
-    // リクエストボディ取得
-    const body = await request.json()
-    const { title, content, priority, status } = body
 
     // 更新データの検証
     if (title !== undefined || content !== undefined || priority !== undefined) {
@@ -209,9 +230,12 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
+    // paramsを待機
+    const params = await context.params
+    
     // 認証チェック
     const sessionToken = request.cookies.get('session')?.value
     if (!sessionToken) {
@@ -255,13 +279,13 @@ export async function DELETE(
 
     const existingQuestion = questionResult.question!
 
-    // 権限チェック：作成者または管理者のみ
-    if (!authResult.user.isAdmin && existingQuestion.authorId !== authResult.user.id) {
+    // 権限チェック：管理者のみ
+    if (!authResult.user.isAdmin) {
       return NextResponse.json(
         { 
           error: { 
             code: 'FORBIDDEN', 
-            message: 'Only the question author or admin can delete this question' 
+            message: 'Only administrators can delete questions' 
           } 
         },
         { status: 403 }
