@@ -15,10 +15,10 @@ import {
   LoginResult, 
   LogoutResult, 
   PasswordValidationResult,
-  AuthErrorCodes,
-  AuthError
+  // AuthErrorCodes,
+  // AuthError
 } from '../types/auth'
-import { ErrorHandler, isAppError } from './errors'
+import { /* ErrorHandler, */ isAppError } from './errors'
 
 const PASSWORD_MIN_LENGTH = 8
 const BCRYPT_SALT_ROUNDS = 12

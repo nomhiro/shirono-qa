@@ -27,7 +27,7 @@ import { GroupCreateData } from '@/lib/admin'
 export default function GroupManagementPage() {
   const router = useRouter()
   
-  const [user, setUser] = useState<User | null>(null)
+  const [_user, setUser] = useState<User | null>(null)
   const [groups, setGroups] = useState<Group[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)

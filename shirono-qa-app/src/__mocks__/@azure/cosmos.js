@@ -9,7 +9,7 @@ const mockContainer = {
       mockResources.push(newItem)
       return Promise.resolve({ resource: newItem })
     }),
-    query: jest.fn().mockImplementation((query) => ({
+    query: jest.fn().mockImplementation((_query) => ({
       fetchAll: jest.fn().mockResolvedValue({
         resources: mockResources.filter(() => true) // 簡単なフィルタ
       }),
@@ -19,7 +19,7 @@ const mockContainer = {
       })
     }))
   },
-  item: jest.fn().mockImplementation((id, partitionKey) => ({
+  item: jest.fn().mockImplementation((id, _partitionKey) => ({
     read: jest.fn().mockImplementation(() => {
       const item = mockResources.find(r => r.id === id)
       if (item) {

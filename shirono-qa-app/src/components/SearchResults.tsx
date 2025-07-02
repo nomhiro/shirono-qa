@@ -107,7 +107,7 @@ export default function SearchResults({ results, loading = false }: SearchResult
             Search Results
           </h2>
           <p className="text-sm text-gray-600">
-            {results.total} questions found for "{results.query}"
+            {results.total} questions found for &quot;{results.query}&quot;
           </p>
         </div>
         <div className="text-sm text-gray-500">

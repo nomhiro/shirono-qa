@@ -12,7 +12,7 @@ import {
 import { getCosmosService } from './cosmos'
 import { isAppError } from './errors'
 import { getAnswersByQuestion, getCommentsByQuestion } from './answers'
-import { getBlobStorageService, isBlobStorageEnabled } from './blob-storage'
+import { getBlobStorageService /* , isBlobStorageEnabled */ } from './blob-storage'
 
 interface ValidationResult {
   valid: boolean
