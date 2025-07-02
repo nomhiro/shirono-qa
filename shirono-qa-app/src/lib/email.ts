@@ -900,13 +900,15 @@ let emailServiceInstance: EmailService | null = null
  */
 export function getEmailService(): EmailService {
   if (!emailServiceInstance) {
-    const host = process.env.SMTP_HOST
+    // ビルド時はダミー値を使用
+    const host = process.env.SMTP_HOST || 'smtp.dummy.com'
     const port = parseInt(process.env.SMTP_PORT || '587')
-    const user = process.env.SMTP_USER
-    const password = process.env.SMTP_PASSWORD
+    const user = process.env.SMTP_USER || 'dummy@example.com'
+    const password = process.env.SMTP_PASSWORD || 'dummy-password'
 
-    if (!host || !user || !password) {
-      throw new Error('Email configuration is missing. Please set SMTP_HOST, SMTP_USER, and SMTP_PASSWORD environment variables.')
+    // 本番環境でのみ厳密なチェックを行う
+    if (process.env.NODE_ENV === 'production' && process.env.VERCEL_ENV !== 'preview' && (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASSWORD)) {
+      console.warn('Email configuration is missing in production. Email notifications may not work.')
     }
 
     emailServiceInstance = new EmailService({

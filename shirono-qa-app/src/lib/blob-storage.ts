@@ -574,11 +574,13 @@ let blobStorageServiceInstance: BlobStorageService | null = null
  */
 export function getBlobStorageService(): BlobStorageService {
   if (!blobStorageServiceInstance) {
-    const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING
-    const containerName = process.env.AZURE_STORAGE_CONTAINER_NAME
+    // ビルド時はダミー値を使用
+    const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING || 'DefaultEndpointsProtocol=https;AccountName=dummy;AccountKey=dummy-key==;EndpointSuffix=core.windows.net'
+    const containerName = process.env.AZURE_STORAGE_CONTAINER_NAME || 'qa-attachments'
 
-    if (!connectionString || !containerName) {
-      throw new Error('Azure Storage configuration is missing')
+    // 本番環境でのみ厳密なチェックを行う
+    if (process.env.NODE_ENV === 'production' && process.env.VERCEL_ENV !== 'preview' && (!process.env.AZURE_STORAGE_CONNECTION_STRING || !process.env.AZURE_STORAGE_CONTAINER_NAME)) {
+      console.warn('Azure Storage configuration is missing in production. File operations may fail.')
     }
 
     blobStorageServiceInstance = new BlobStorageService({

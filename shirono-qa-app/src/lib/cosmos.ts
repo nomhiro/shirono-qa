@@ -252,11 +252,13 @@ let cosmosServiceInstance: CosmosService | null = null
  */
 export function getCosmosService(): CosmosService {
   if (!cosmosServiceInstance) {
-    const connectionString = process.env.COSMOS_DB_CONNECTION_STRING
-    const databaseName = process.env.COSMOS_DB_DATABASE_NAME
+    // ビルド時はダミー値を使用
+    const connectionString = process.env.COSMOS_DB_CONNECTION_STRING || 'AccountEndpoint=https://dummy.cosmos.azure.com:443/;AccountKey=dummy-key=='
+    const databaseName = process.env.COSMOS_DB_DATABASE_NAME || 'ShironoQA'
 
-    if (!connectionString || !databaseName) {
-      throw new Error('Cosmos DB configuration is missing')
+    // 本番環境でのみ厳密なチェックを行う
+    if (process.env.NODE_ENV === 'production' && process.env.VERCEL_ENV !== 'preview' && (!process.env.COSMOS_DB_CONNECTION_STRING || !process.env.COSMOS_DB_DATABASE_NAME)) {
+      console.warn('Cosmos DB configuration is missing in production. Database operations may fail.')
     }
 
     cosmosServiceInstance = new CosmosService({

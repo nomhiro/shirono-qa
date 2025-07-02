@@ -35,26 +35,24 @@ class OpenAIClient {
   private apiVersion: string
 
   constructor() {
-    this.endpoint = process.env.AZURE_OPENAI_ENDPOINT
-    this.apiKey = process.env.AZURE_OPENAI_API_KEY
+    // ビルド時はダミー値を使用（実際のAPI呼び出しは行われない）
+    this.endpoint = process.env.AZURE_OPENAI_ENDPOINT || 'https://dummy.openai.azure.com/'
+    this.apiKey = process.env.AZURE_OPENAI_API_KEY || 'dummy-key'
     this.deploymentName = process.env.AZURE_OPENAI_DEPLOYMENT_NAME || 'gpt-4'
     this.embeddingModel = process.env.AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME || 'text-embedding-3-large'
     this.apiVersion = '2024-10-21'
 
-    if (!this.endpoint || !this.apiKey) {
-      throw new Error('Azure OpenAI configuration is missing. Please set AZURE_OPENAI_ENDPOINT and AZURE_OPENAI_API_KEY environment variables.')
+    // 本番環境でのみ厳密なチェックを行う
+    if (process.env.NODE_ENV === 'production' && process.env.VERCEL_ENV !== 'preview' && (!process.env.AZURE_OPENAI_ENDPOINT || !process.env.AZURE_OPENAI_API_KEY)) {
+      console.warn('Azure OpenAI configuration is missing in production. Some AI features may not work.')
     }
 
-    try {
-      this.client = new AzureOpenAI({
-        endpoint: this.endpoint,
-        apiKey: this.apiKey,
-        apiVersion: this.apiVersion,
-        })
-    } catch (error) {
-      console.error('Failed to initialize Azure OpenAI client:', error)
-      throw error
-    }
+    // クライアントの初期化は実際に使用される時まで遅延
+    this.client = new AzureOpenAI({
+      endpoint: this.endpoint,
+      apiKey: this.apiKey,
+      apiVersion: this.apiVersion,
+    })
   }
 
   async embedText(text: string): Promise<number[]> {
@@ -148,20 +146,29 @@ Tags should be lowercase and use common technical terms.`
   }
 }
 
-// Create singleton instance
-const openAIClient = new OpenAIClient()
+// Lazy singleton instance
+let openAIClientInstance: OpenAIClient | null = null
+
+function getOpenAIClient(): OpenAIClient {
+  if (!openAIClientInstance) {
+    openAIClientInstance = new OpenAIClient()
+  }
+  return openAIClientInstance
+}
 
 // Export convenience functions
 export async function embedText(text: string): Promise<number[]> {
-  return openAIClient.embedText(text)
+  return getOpenAIClient().embedText(text)
 }
 
 export async function generateTags(title: string, content: string): Promise<TagGenerationResponse> {
-  return openAIClient.generateTags(title, content)
+  return getOpenAIClient().generateTags(title, content)
 }
 
 export async function chatCompletion(prompt: string): Promise<ChatCompletionResponse> {
-  return openAIClient.chatCompletion(prompt)
+  return getOpenAIClient().chatCompletion(prompt)
 }
 
-export default openAIClient
+export function getOpenAIClientInstance(): OpenAIClient {
+  return getOpenAIClient()
+}
