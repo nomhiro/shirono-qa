@@ -26,8 +26,7 @@ export interface FullSeedResult {
  */
 export async function createInitialAdmin(): Promise<SeedResult> {
   try {
-    console.log('🔧 Creating initial admin account...')
-    
+
     const cosmosService = getCosmosService()
 
     // 既存の管理者アカウントを確認
@@ -37,7 +36,6 @@ export async function createInitialAdmin(): Promise<SeedResult> {
     )
 
     if (existingAdmins.length > 0) {
-      console.log('ℹ️ Admin user already exists, skipping creation')
       return {
         success: true,
         skipped: true,
@@ -56,7 +54,6 @@ export async function createInitialAdmin(): Promise<SeedResult> {
     )
 
     if (existingUsers.length > 0) {
-      console.log('ℹ️ User with admin username or email already exists, skipping creation')
       return {
         success: true,
         skipped: true,
@@ -79,8 +76,6 @@ export async function createInitialAdmin(): Promise<SeedResult> {
 
     await cosmosService.createItem('users', adminUser)
 
-    console.log('✅ Initial admin account created successfully')
-    
     return {
       success: true,
       message: 'Admin account created successfully',
@@ -101,8 +96,7 @@ export async function createInitialAdmin(): Promise<SeedResult> {
  */
 export async function createInitialGroup(): Promise<SeedResult> {
   try {
-    console.log('🔧 Creating initial group TS-AI...')
-    
+
     const cosmosService = getCosmosService()
 
     // 既存のTS-AIグループを確認
@@ -113,7 +107,6 @@ export async function createInitialGroup(): Promise<SeedResult> {
     )
 
     if (existingGroups.length > 0) {
-      console.log('ℹ️ Group TS-AI already exists, skipping creation')
       return {
         success: true,
         skipped: true,
@@ -145,11 +138,8 @@ export async function createInitialGroup(): Promise<SeedResult> {
       }
 
       await cosmosService.replaceItem('users', updatedAdmin.id, updatedAdmin)
-      console.log('✅ Admin user assigned to TS-AI group')
     }
 
-    console.log('✅ Initial group TS-AI created successfully')
-    
     return {
       success: true,
       message: 'TS-AI group created successfully',
@@ -169,10 +159,9 @@ export async function createInitialGroup(): Promise<SeedResult> {
  * すべての初期データを作成
  */
 export async function seedInitialData(): Promise<FullSeedResult> {
-  console.log('🌱 Starting initial data seeding...')
-  
+
   const errors: string[] = []
-  
+
   try {
     // 1. 初期管理者アカウントを作成
     const adminResult = await createInitialAdmin()
@@ -196,10 +185,9 @@ export async function seedInitialData(): Promise<FullSeedResult> {
     }
 
     const overallSuccess = adminResult.success && groupResult.success
-    
+
     if (overallSuccess) {
       if (adminResult.skipped && groupResult.skipped) {
-        console.log('ℹ️ All initial data already exists, nothing to create')
         return {
           success: true,
           message: 'All initial data already exists',
@@ -207,7 +195,6 @@ export async function seedInitialData(): Promise<FullSeedResult> {
           groupResult
         }
       } else {
-        console.log('✅ Initial data seeding completed successfully')
         return {
           success: true,
           message: 'Initial data seeding completed successfully',
@@ -216,7 +203,6 @@ export async function seedInitialData(): Promise<FullSeedResult> {
         }
       }
     } else {
-      console.log('❌ Initial data seeding completed with errors')
       return {
         success: false,
         message: 'Initial data seeding completed with errors',
@@ -230,7 +216,7 @@ export async function seedInitialData(): Promise<FullSeedResult> {
     console.error('❌ Fatal error during initial data seeding:', error)
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
     errors.push(`Fatal error: ${errorMessage}`)
-    
+
     return {
       success: false,
       message: 'Fatal error during initial data seeding',
@@ -246,8 +232,7 @@ export async function seedInitialData(): Promise<FullSeedResult> {
  */
 export async function seedDevelopmentData(): Promise<SeedResult> {
   try {
-    console.log('🔧 Creating development test data...')
-    
+
     const cosmosService = getCosmosService()
 
     // テストユーザーを作成
@@ -279,11 +264,11 @@ export async function seedDevelopmentData(): Promise<SeedResult> {
 
     if (tsAiGroups.length > 0) {
       const tsAiGroupId = tsAiGroups[0].id
-      
+
       // テストユーザーをTS-AIグループに割り当て
       for (const testUser of testUsers) {
         testUser.groupId = tsAiGroupId
-        
+
         // 既存ユーザーをチェック
         const existingUsers = await cosmosService.queryItems<User>(
           'users',
@@ -293,15 +278,12 @@ export async function seedDevelopmentData(): Promise<SeedResult> {
 
         if (existingUsers.length === 0) {
           await cosmosService.createItem('users', testUser)
-          console.log(`✅ Test user ${testUser.username} created`)
         } else {
-          console.log(`ℹ️ Test user ${testUser.username} already exists`)
+          console.warn(`User ${testUser.username} already exists, skipping creation`)
         }
       }
     }
 
-    console.log('✅ Development test data created successfully')
-    
     return {
       success: true,
       message: 'Development test data created successfully'

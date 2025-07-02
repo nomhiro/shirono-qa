@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Box, Typography, CircularProgress } from '@mui/material'
 import AppHeader from '@/components/AppHeader'
 
@@ -29,6 +29,7 @@ export default function QuestionsPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('未回答・回答済み')
   const router = useRouter()
+  const searchParams = useSearchParams()
 
   const getStatusLabel = (status: string) => {
     switch (status) {
@@ -125,6 +126,17 @@ export default function QuestionsPage() {
       loadQuestions()
     }
   }, [statusFilter, user, loadQuestions])
+
+  // refreshクエリパラメータを検知して強制更新
+  useEffect(() => {
+    const refresh = searchParams.get('refresh')
+    if (refresh === 'true' && user) {
+      setIsLoading(true)
+      loadQuestions(true) // 強制更新
+      // クエリパラメータをクリーンアップ
+      router.replace('/questions')
+    }
+  }, [searchParams, user, loadQuestions, router])
 
   const handleUserLoaded = (userData: User) => {
     setUser(userData)

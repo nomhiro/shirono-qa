@@ -97,7 +97,7 @@ class EmailService {
     try {
 
       const template = this.getEmailTemplate(data)
-      
+
       const mailOptions = {
         from: `"QAサイト" <${this.fromAddress}>`,
         to: recipientEmail,
@@ -107,7 +107,6 @@ class EmailService {
       }
 
       const result = await this.transporter.sendMail(mailOptions)
-      console.log('Email sent successfully:', result.messageId)
       return true
     } catch (error) {
       console.error('Failed to send email:', error)
@@ -131,7 +130,7 @@ class EmailService {
           ...data,
           recipientName: recipient.name
         }
-        
+
         const sent = await this.sendNotification(recipient.email, notificationData)
         if (sent) {
           success++
@@ -314,7 +313,7 @@ class EmailService {
   private generateStatusChangedHtml(data: NotificationData): string {
     const statusText = this.getStatusText(data.newStatus)
     const statusColor = this.getStatusColor(data.newStatus)
-    
+
     return `
       <!DOCTYPE html>
       <html>
@@ -448,7 +447,7 @@ QAサイト システム
 
   private generateStatusChangedText(data: NotificationData): string {
     const statusText = this.getStatusText(data.newStatus)
-    
+
     return `
 質問のステータスが変更されました
 
@@ -570,7 +569,7 @@ function generateEmailContent(type: EmailType, data: EmailNotificationData): { s
 
 // HTMLテンプレート生成関数
 function generateQuestionPostedHTML(data: EmailNotificationData, questionUrl: string): string {
-  const attachmentsList = data.question.attachments.length > 0 
+  const attachmentsList = data.question.attachments.length > 0
     ? `<p><strong>添付ファイル (${data.question.attachments.length}件):</strong></p>
        <ul>${data.question.attachments.map(att => `<li>${att.fileName}</li>`).join('')}</ul>`
     : ''
@@ -733,7 +732,7 @@ function generateQuestionRejectedHTML(data: EmailNotificationData, questionUrl: 
 
 // テキスト形式テンプレート生成関数
 function generateQuestionPostedText(data: EmailNotificationData, questionUrl: string): string {
-  const attachmentsList = data.question.attachments.length > 0 
+  const attachmentsList = data.question.attachments.length > 0
     ? `\n添付ファイル: ${data.question.attachments.map(att => att.fileName).join(', ')}\n`
     : ''
 

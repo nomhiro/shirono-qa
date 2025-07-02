@@ -151,7 +151,15 @@ export default function NewQuestionPage() {
         }
       }
 
-      // 質問詳細画面に遷移
+      // キャッシュを無効化
+      const statusFilters = ['すべて', '未回答', '回答済み', '解決済み', '未回答・回答済み']
+      statusFilters.forEach(filter => {
+        const cacheKey = `questions_${filter}`
+        sessionStorage.removeItem(cacheKey)
+        sessionStorage.removeItem(`${cacheKey}_time`)
+      })
+
+      // 投稿詳細画面に遷移
       router.push(`/questions/${questionId}`)
 
     } catch (error) {

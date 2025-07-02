@@ -414,7 +414,14 @@ export default function QuestionDetailPage() {
       if (response.ok) {
         const data = await response.json()
         if (data.success) {
-          router.push('/questions')
+          // キャッシュを無効化
+          const statusFilters = ['すべて', '未回答', '回答済み', '解決済み', '未回答・回答済み']
+          statusFilters.forEach(filter => {
+            const cacheKey = `questions_${filter}`
+            sessionStorage.removeItem(cacheKey)
+            sessionStorage.removeItem(`${cacheKey}_time`)
+          })
+          router.push('/questions?refresh=true')
         } else {
           setError(data.error || '投稿の削除に失敗しました')
         }
@@ -478,7 +485,7 @@ export default function QuestionDetailPage() {
       <div className="min-h-screen bg-gray-50">
         <AppHeader breadcrumbItems={[
           { label: 'ホーム', href: '/questions' },
-          { label: '質問詳細', current: true }
+          { label: '投稿詳細', current: true }
         ]} />
         <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
           <CircularProgress />
@@ -506,7 +513,7 @@ export default function QuestionDetailPage() {
 
   const breadcrumbItems = [
     { label: 'ホーム', href: '/questions' },
-    { label: '質問詳細', current: true }
+    { label: '投稿詳細', current: true }
   ]
 
   return (
