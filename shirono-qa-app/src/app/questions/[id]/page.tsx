@@ -153,13 +153,13 @@ export default function QuestionDetailPage() {
       // 質問データ取得
       const questionResponse = await fetch(`/api/questions/${questionId}`)
       if (!questionResponse.ok) {
-        setError('質問の読み込みに失敗しました')
+        setError('投稿の読み込みに失敗しました')
         return
       }
 
       const questionData = await questionResponse.json()
       if (!questionData.success) {
-        setError(questionData.error?.message || '質問の読み込みに失敗しました')
+        setError(questionData.error?.message || '投稿の読み込みに失敗しました')
         return
       }
 
@@ -208,7 +208,7 @@ export default function QuestionDetailPage() {
 
     } catch (err) {
       console.error('Error loading data:', err)
-      setError('質問データの読み込みに失敗しました')
+      setError('投稿データの読み込みに失敗しました')
     } finally {
       setLoading(false)
     }
@@ -249,10 +249,10 @@ export default function QuestionDetailPage() {
           setQuestion(data.question)
           setIsEditing(false)
         } else {
-          setError(data.error?.message || '質問の更新に失敗しました')
+          setError(data.error?.message || '投稿の更新に失敗しました')
         }
       } else {
-        setError('質問の更新に失敗しました')
+        setError('投稿の更新に失敗しました')
       }
     } catch (err) {
       console.error('Error saving changes:', err)
@@ -416,14 +416,14 @@ export default function QuestionDetailPage() {
         if (data.success) {
           router.push('/questions')
         } else {
-          setError(data.error || '質問の削除に失敗しました')
+          setError(data.error || '投稿の削除に失敗しました')
         }
       } else {
-        setError('質問の削除に失敗しました')
+        setError('投稿の削除に失敗しました')
       }
     } catch (err) {
       console.error('Error deleting question:', err)
-      setError('質問の削除に失敗しました')
+      setError('投稿の削除に失敗しました')
     } finally {
       setSubmitting(false)
       setDeleteDialogOpen(false)
@@ -499,7 +499,7 @@ export default function QuestionDetailPage() {
   if (!question) {
     return (
       <Box p={3}>
-        <Alert severity="error">質問が見つかりません</Alert>
+        <Alert severity="error">投稿が見つかりません</Alert>
       </Box>
     )
   }
@@ -570,7 +570,7 @@ export default function QuestionDetailPage() {
                           </Stack>
                         ) : (
                           <Stack direction="row" spacing={1}>
-                            <Tooltip title="質問を編集">
+                            <Tooltip title="投稿を編集">
                               <IconButton
                                 onClick={handleEditToggle}
                                 size="small"
@@ -580,7 +580,7 @@ export default function QuestionDetailPage() {
                             </Tooltip>
                             {/* 管理者のみ削除ボタン */}
                             {user?.isAdmin && (
-                              <Tooltip title="質問を削除">
+                              <Tooltip title="投稿を削除">
                                 <IconButton
                                   onClick={() => setDeleteDialogOpen(true)}
                                   size="small"
@@ -600,7 +600,7 @@ export default function QuestionDetailPage() {
                   isEditing ? (
                     <TextField
                       fullWidth
-                      label="質問タイトル"
+                      label="投稿タイトル"
                       value={editData.title}
                       onChange={(e) => setEditData({ ...editData, title: e.target.value })}
                       variant="outlined"
@@ -650,7 +650,7 @@ export default function QuestionDetailPage() {
                       fullWidth
                       multiline
                       rows={6}
-                      label="質問内容"
+                      label="投稿内容"
                       value={editData.content}
                       onChange={(e) => setEditData({ ...editData, content: e.target.value })}
                       variant="outlined"
@@ -678,7 +678,6 @@ export default function QuestionDetailPage() {
                 {/* 添付ファイル */}
                 {question.attachments && question.attachments.length > 0 && (
                   <Box mt={2}>
-                    {console.log('Question attachments data:', question.attachments)}
                     <AttachmentList attachments={question.attachments} />
                   </Box>
                 )}
@@ -705,7 +704,7 @@ export default function QuestionDetailPage() {
                         <Stack direction="row" spacing={2} alignItems="center" justifyContent="space-between">
                           <Box>
                             <Typography variant="subtitle2" color="success.dark" sx={{ fontWeight: 'bold' }}>
-                              この質問は解決しましたか？
+                              この投稿は解決しましたか？
                             </Typography>
                             <Typography variant="caption" color="text.secondary">
                               問題が解決した場合は解決済みにマークしてください
@@ -1010,7 +1009,7 @@ export default function QuestionDetailPage() {
         </DialogTitle>
         <DialogContent>
           <DialogContentText id="delete-dialog-description">
-            この質問を完全に削除しますか？
+            この投稿を完全に削除しますか？
             <br />
             <strong>この操作は取り消せません。</strong>
             <br />

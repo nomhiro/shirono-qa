@@ -113,9 +113,7 @@ export async function createAnswer(
       updatedAt: new Date()
     }
 
-    console.log('About to save answer to Cosmos DB:', answer)
     const createdAnswer = await cosmosService.createItem<Answer>('answers', answer)
-    console.log('Answer created in Cosmos DB:', createdAnswer)
 
     return {
       success: true,
@@ -268,9 +266,7 @@ export async function getAnswersByQuestion(questionId: string): Promise<GetAnswe
     const query = 'SELECT * FROM c WHERE c.questionId = @questionId ORDER BY c.createdAt ASC'
     const parameters = [{ name: '@questionId', value: questionId }]
 
-    console.log('Querying answers for question:', questionId)
     const answers = await cosmosService.queryItems<Answer>('answers', query, parameters)
-    console.log('Found answers:', answers.length)
 
     return {
       success: true,
@@ -327,9 +323,7 @@ export async function createComment(
       createdAt: new Date()
     }
 
-    console.log('About to save comment to Cosmos DB:', comment)
     const createdComment = await cosmosService.createItem<Comment>('comments', comment)
-    console.log('Comment created in Cosmos DB:', createdComment)
 
     return {
       success: true,
@@ -476,9 +470,7 @@ export async function getCommentsByQuestion(questionId: string): Promise<GetComm
     const query = 'SELECT * FROM c WHERE c.questionId = @questionId ORDER BY c.createdAt ASC'
     const parameters = [{ name: '@questionId', value: questionId }]
 
-    console.log('Querying comments for question:', questionId)
     const comments = await cosmosService.queryItems<Comment>('comments', query, parameters)
-    console.log('Found comments:', comments.length)
 
     return {
       success: true,
@@ -510,7 +502,6 @@ export async function getCommentsByAnswer(answerId: string): Promise<GetComments
 
     console.log('Querying comments for answer:', answerId)
     const comments = await cosmosService.queryItems<Comment>('comments', query, parameters)
-    console.log('Found comments:', comments.length)
 
     return {
       success: true,

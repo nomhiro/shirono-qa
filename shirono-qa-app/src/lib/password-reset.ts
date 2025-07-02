@@ -77,7 +77,6 @@ export function validatePasswordStrength(password: string): { valid: boolean; er
  */
 export async function createPasswordResetRequest(email: string): Promise<PasswordResetRequest> {
   try {
-    console.log(`🔧 Creating password reset request for email: ${email}`)
     
     const cosmosService = getCosmosService()
 
@@ -90,7 +89,6 @@ export async function createPasswordResetRequest(email: string): Promise<Passwor
 
     // セキュリティのため、ユーザーが存在しない場合でも成功レスポンスを返す
     if (users.length === 0) {
-      console.log('ℹ️ Email not found, but returning success for security')
       return {
         success: true,
         message: 'If the email exists in our system, you will receive a password reset link.'
@@ -129,7 +127,6 @@ export async function createPasswordResetRequest(email: string): Promise<Passwor
 
     await cosmosService.createItem('password_reset_tokens', passwordResetToken)
 
-    console.log('✅ Password reset token created successfully')
     
     return {
       success: true,
@@ -152,7 +149,6 @@ export async function createPasswordResetRequest(email: string): Promise<Passwor
  */
 export async function validatePasswordResetToken(token: string): Promise<TokenValidation> {
   try {
-    console.log(`🔧 Validating password reset token: ${token.substring(0, 8)}...`)
     
     const cosmosService = getCosmosService()
 
@@ -164,7 +160,6 @@ export async function validatePasswordResetToken(token: string): Promise<TokenVa
     )
 
     if (tokens.length === 0) {
-      console.log('ℹ️ Token not found')
       return {
         valid: false,
         error: 'Invalid or expired token'
@@ -175,7 +170,6 @@ export async function validatePasswordResetToken(token: string): Promise<TokenVa
 
     // トークンが無効化されているかチェック
     if (!resetToken.isValid) {
-      console.log('ℹ️ Token is invalidated')
       return {
         valid: false,
         error: 'Invalid or expired token'
@@ -184,14 +178,12 @@ export async function validatePasswordResetToken(token: string): Promise<TokenVa
 
     // トークンの有効期限をチェック
     if (new Date() > new Date(resetToken.expiresAt)) {
-      console.log('ℹ️ Token has expired')
       return {
         valid: false,
         error: 'Token has expired'
       }
     }
 
-    console.log('✅ Token is valid')
     
     return {
       valid: true,
@@ -212,7 +204,6 @@ export async function validatePasswordResetToken(token: string): Promise<TokenVa
  */
 export async function resetPassword(token: string, newPassword: string): Promise<PasswordResetResult> {
   try {
-    console.log(`🔧 Resetting password with token: ${token.substring(0, 8)}...`)
     
     // パスワード強度を検証
     const passwordValidation = validatePasswordStrength(newPassword)
@@ -270,7 +261,6 @@ export async function resetPassword(token: string, newPassword: string): Promise
       await cosmosService.replaceItem('password_reset_tokens', resetToken.id, invalidatedToken)
     }
 
-    console.log('✅ Password reset successfully')
     
     return {
       success: true,
@@ -291,7 +281,6 @@ export async function resetPassword(token: string, newPassword: string): Promise
  */
 export async function cleanupExpiredTokens(): Promise<{ success: boolean; deletedCount: number; error?: string }> {
   try {
-    console.log('🔧 Cleaning up expired password reset tokens...')
     
     const cosmosService = getCosmosService()
 
@@ -309,7 +298,6 @@ export async function cleanupExpiredTokens(): Promise<{ success: boolean; delete
       deletedCount++
     }
 
-    console.log(`✅ Cleaned up ${deletedCount} expired tokens`)
     
     return {
       success: true,

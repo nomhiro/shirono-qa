@@ -99,7 +99,6 @@ export async function POST(
       contentType: file.contentType || 'application/octet-stream'
     }))
     
-    console.log('Attaching files to question:', { questionId: params.id, attachments })
 
     // 既存の添付ファイルと合わせる
     const currentAttachments = question.attachments || []

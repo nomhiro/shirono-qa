@@ -81,7 +81,6 @@ export default function AttachmentList({ attachments }: AttachmentListProps) {
   }
 
   const handleDownload = async (attachment: Attachment) => {
-    console.log('Download request for attachment:', attachment)
 
     setDownloadingFiles(prev => new Set(prev).add(attachment.fileName))
     setErrors(prev => {

@@ -31,7 +31,6 @@ export async function POST(request: NextRequest) {
     let body: DownloadRequest
     try {
       body = await request.json()
-      console.log('Download request body:', body)
     } catch (error) {
       console.error('Failed to parse download request JSON:', error)
       return NextResponse.json(
@@ -41,7 +40,6 @@ export async function POST(request: NextRequest) {
     }
 
     const { blobUrl, fileName } = body
-    console.log('Download parameters:', { blobUrl, fileName })
 
     if (!blobUrl || !fileName) {
       console.error('Missing required parameters:', { blobUrl: !!blobUrl, fileName: !!fileName })
@@ -57,7 +55,6 @@ export async function POST(request: NextRequest) {
       // Blob URLから完全なパス（questions/{id}/question/{filename}など）を抽出
       const fullBlobPath = blobService.extractFileNameFromUrl(blobUrl)
       
-      console.log('Extracted blob path:', fullBlobPath)
 
       // ファイルをダウンロード
       const fileBuffer = await blobService.downloadFile(fullBlobPath)

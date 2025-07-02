@@ -544,7 +544,6 @@ class BlobStorageService {
         // デコードに失敗した場合はそのまま使用
       }
 
-      console.log('Extracted full path from URL:', { blobUrl, fullPath: decodedPath })
       return decodedPath
     } catch (error) {
       console.error('Failed to extract full path from URL:', blobUrl, error)

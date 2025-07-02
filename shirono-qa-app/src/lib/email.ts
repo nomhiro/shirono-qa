@@ -79,7 +79,7 @@ class EmailService {
   async testConnection(): Promise<boolean> {
     try {
       await this.transporter.verify()
-      console.log('Email service connection verified')
+      // Email接続確認成功
       return true
     } catch (error) {
       console.error('Email service connection failed:', error)

@@ -238,8 +238,19 @@ export async function getQuestions(query: GetQuestionsQuery): Promise<GetQuestio
       sqlQuery += ' WHERE 1=1'  // WHERE句を開始するためのダミー条件
     }
 
-    // Add status filter
-    if (query.status) {
+    // Add status filter (複数ステータス対応)
+    if (query.statusArray && query.statusArray.length > 0) {
+      if (query.statusArray.length === 1) {
+        sqlQuery += ' AND c.status = @status'
+        parameters.push({ name: '@status', value: query.statusArray[0] })
+      } else {
+        const statusConditions = query.statusArray.map((_, index) => `c.status = @status${index}`).join(' OR ')
+        sqlQuery += ` AND (${statusConditions})`
+        query.statusArray.forEach((status, index) => {
+          parameters.push({ name: `@status${index}`, value: status })
+        })
+      }
+    } else if (query.status) {
       sqlQuery += ' AND c.status = @status'
       parameters.push({ name: '@status', value: query.status })
     }
@@ -418,7 +429,6 @@ async function deleteBlobFiles(attachmentUrls: string[]): Promise<void> {
     return
   }
 
-  console.log(`Deleting ${attachmentUrls.length} blob files...`)
 
   // Blob Storage設定の確認
   try {
@@ -434,7 +444,6 @@ async function deleteBlobFiles(attachmentUrls: string[]): Promise<void> {
     const blobService = getBlobStorageService()
     const result = await blobService.deleteFilesByUrls(attachmentUrls)
 
-    console.log(`Blob deletion completed: ${result.success} successful, ${result.failed.length} failed`)
 
     if (result.failed.length > 0) {
       console.warn('Failed to delete some blob files:', result.failed)
@@ -460,17 +469,13 @@ export async function deleteQuestionWithRelatedData(questionId: string): Promise
 
     const existingQuestion = getResult.question
 
-    console.log(`Deleting question ${questionId} and all related data...`)
-
     // 1. 添付ファイルのURL収集
     const attachmentUrls = await collectAttachmentUrls(questionId)
-    console.log(`Found ${attachmentUrls.length} attachment files to delete`)
 
     // 2. 関連するコメントを削除
     try {
       const commentsResult = await getCommentsByQuestion(questionId)
       if (commentsResult.success && commentsResult.comments) {
-        console.log(`Deleting ${commentsResult.comments.length} comments...`)
         for (const comment of commentsResult.comments) {
           await cosmosService.deleteItem('comments', comment.id, questionId)
         }
@@ -484,7 +489,6 @@ export async function deleteQuestionWithRelatedData(questionId: string): Promise
     try {
       const answersResult = await getAnswersByQuestion(questionId)
       if (answersResult.success && answersResult.answers) {
-        console.log(`Deleting ${answersResult.answers.length} answers...`)
         for (const answer of answersResult.answers) {
           await cosmosService.deleteItem('answers', answer.id, questionId)
         }
@@ -496,7 +500,6 @@ export async function deleteQuestionWithRelatedData(questionId: string): Promise
 
     // 4. 質問本体を削除
     await cosmosService.deleteItem('questions', questionId, existingQuestion.groupId)
-    console.log('Question deleted successfully')
 
     // 5. 添付ファイルを削除（非同期で実行、エラーが発生しても全体の削除処理は成功とする）
     if (attachmentUrls.length > 0) {

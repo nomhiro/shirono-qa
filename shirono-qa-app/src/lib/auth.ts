@@ -182,11 +182,8 @@ export async function validateSession(sessionToken: string): Promise<{ valid: bo
     }
 
     // セッション取得
-    console.log('Getting session by token:', sessionToken.substring(0, 10) + '...')
     const session = await getSessionByToken(sessionToken)
-    console.log('Session found:', session ? 'Yes' : 'No')
     if (!session) {
-      console.log('Session not found in database')
       return { valid: false }
     }
 
@@ -198,16 +195,12 @@ export async function validateSession(sessionToken: string): Promise<{ valid: bo
     }
 
     // ユーザー取得
-    console.log('Getting user by ID:', session.userId)
     const user = await getUserById(session.userId)
-    console.log('User found:', user ? 'Yes' : 'No')
     if (!user) {
-      console.log('User not found for session')
       return { valid: false }
     }
 
     // セッションアクセス時刻更新
-    console.log('Updating session access for session ID:', session.id)
     await updateSessionAccess(session.id, session.userId)
 
     return { 

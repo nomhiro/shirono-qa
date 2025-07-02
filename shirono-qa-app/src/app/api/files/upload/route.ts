@@ -95,7 +95,6 @@ export async function POST(request: NextRequest) {
           contentType: uploadResult.contentType
         })
         
-        console.log(`File uploaded: ${file.name} (${file.size} bytes) -> ${uploadResult.blobUrl}`)
       }
     } catch (error) {
       console.error('Blob storage upload failed:', error)

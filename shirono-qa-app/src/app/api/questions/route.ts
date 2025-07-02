@@ -3,7 +3,8 @@ import { validateSession } from '@/lib/auth'
 import { getQuestions, createQuestion, validateQuestionData } from '@/lib/questions'
 import { generateTags } from '@/lib/openai'
 import { QuestionStatus, QuestionPriority } from '@/types/question'
-import { sendEmail, EmailType } from '@/lib/email'
+import { sendNotificationEmail, EmailType } from '@/lib/email'
+import { getUsers } from '@/lib/admin'
 
 export async function GET(request: NextRequest) {
   try {
@@ -42,10 +43,24 @@ export async function GET(request: NextRequest) {
     const priorityParam = searchParams.get('priority')
     const search = searchParams.get('search')
 
-    // 型変換
-    const status = statusParam && Object.values(QuestionStatus).includes(statusParam as QuestionStatus)
-      ? (statusParam as QuestionStatus)
-      : undefined
+    // 型変換（複数ステータス対応）
+    let statusArray: QuestionStatus[] | undefined
+    if (statusParam) {
+      if (statusParam.includes(',')) {
+        // カンマ区切りの複数ステータス
+        const statuses = statusParam.split(',').map(s => s.trim())
+        const validStatuses = statuses.filter(s => 
+          Object.values(QuestionStatus).includes(s as QuestionStatus)
+        ) as QuestionStatus[]
+        statusArray = validStatuses.length > 0 ? validStatuses : undefined
+      } else {
+        // 単一ステータス
+        const singleStatus = Object.values(QuestionStatus).includes(statusParam as QuestionStatus)
+          ? (statusParam as QuestionStatus)
+          : undefined
+        statusArray = singleStatus ? [singleStatus] : undefined
+      }
+    }
     const priority = priorityParam && Object.values(QuestionPriority).includes(priorityParam as QuestionPriority)
       ? (priorityParam as QuestionPriority)
       : undefined
@@ -55,14 +70,12 @@ export async function GET(request: NextRequest) {
       page,
       limit,
       groupId: authResult.user.isAdmin ? undefined : authResult.user.groupId,
-      status,
+      statusArray,
       priority,
       search: search || undefined
     }
 
-    console.log('Getting questions with query:', queryData)
     const result = await getQuestions(queryData)
-    console.log('Questions result:', { success: result.success, count: result.questions?.length })
 
     if (!result.success) {
       return NextResponse.json(
@@ -182,22 +195,26 @@ export async function POST(request: NextRequest) {
     // 管理者にメール通知を送信（非同期、エラーが発生しても質問作成は成功とする）
     if (result.question) {
       try {
-        // 管理者ユーザーを取得する必要があるため、簡単なログ出力のみ
-        console.log(`New question posted: ${result.question.title} by ${authResult.user.username}`)
-        
-        // TODO: 管理者ユーザー取得とメール送信の実装
-        // const adminUsers = await getAdminUsers()
-        // for (const admin of adminUsers) {
-        //   await sendEmail(
-        //     admin.email,
-        //     EmailType.QUESTION_POSTED,
-        //     {
-        //       question: result.question,
-        //       author: authResult.user,
-        //       recipient: admin
-        //     }
-        //   )
-        // }
+        // 管理者ユーザーを取得してメール送信
+        const adminResult = await getUsers({ isAdmin: true })
+        if (adminResult.success && adminResult.users) {
+          for (const admin of adminResult.users) {
+            try {
+              await sendNotificationEmail(
+                EmailType.QUESTION_POSTED,
+                admin.email,
+                {
+                  question: result.question,
+                  author: authResult.user,
+                  recipient: admin
+                }
+              )
+              // メール送信成功（重要なログなので残す）
+            } catch (singleEmailError) {
+              console.error(`Failed to send email to ${admin.email}:`, singleEmailError)
+            }
+          }
+        }
       } catch (emailError) {
         console.error('Failed to send email notification:', emailError)
         // メール送信エラーは質問作成の成功には影響しない

@@ -16,7 +16,6 @@ export default function Home() {
     setIsLoading(true)
 
     try {
-      console.log('Attempting login for user:', username)
       
       const response = await fetch('/api/auth/login', {
         method: 'POST',
@@ -26,8 +25,6 @@ export default function Home() {
         body: JSON.stringify({ username, password }),
       })
 
-      console.log('Response status:', response.status)
-      console.log('Response URL:', response.url)
 
       if (!response.ok) {
         const errorText = await response.text()
@@ -37,11 +34,9 @@ export default function Home() {
       }
 
       const result = await response.json()
-      console.log('Login result:', result)
 
       if (result.success) {
         // ログイン成功 - 質問一覧ページにリダイレクト
-        console.log('Login successful, redirecting to questions')
         router.push('/questions')
       } else {
         setError(result.error || 'ログインに失敗しました')

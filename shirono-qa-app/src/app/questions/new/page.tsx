@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Box, Typography, CircularProgress } from '@mui/material'
 import FileUpload from '@/components/FileUpload'
@@ -16,7 +16,7 @@ export default function NewQuestionPage() {
   const [errors, setErrors] = useState<{ [key: string]: string }>({})
   const router = useRouter()
 
-  const checkAuth = async () => {
+  const checkAuth = useCallback(async () => {
     try {
       const response = await fetch('/api/auth/me')
       if (!response.ok) {
@@ -29,23 +29,23 @@ export default function NewQuestionPage() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [router])
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
       checkAuth()
     }
-  }, [])
+  }, [checkAuth])
 
   const validateForm = () => {
     const newErrors: { [key: string]: string } = {}
 
     if (!title.trim()) {
-      newErrors.title = '質問タイトルは必須です'
+      newErrors.title = 'タイトルは必須です'
     }
 
     if (!content.trim()) {
-      newErrors.content = '質問内容は必須です'
+      newErrors.content = '内容は必須です'
     }
 
     setErrors(newErrors)
@@ -76,7 +76,6 @@ export default function NewQuestionPage() {
     }
 
     const data = await response.json()
-    console.log('File upload response:', data)
 
     // アップロード成功時のレスポンス形式を確認
     if (data.success && data.files) {
@@ -110,7 +109,7 @@ export default function NewQuestionPage() {
       })
 
       if (!questionResponse.ok) {
-        setErrors({ submit: '質問の投稿に失敗しました' })
+        setErrors({ submit: '投稿に失敗しました' })
         return
       }
 
@@ -131,7 +130,6 @@ export default function NewQuestionPage() {
             contentType: file.type
           }))
 
-          console.log('File infos for attachment:', fileInfos)
 
           // 質問にファイルを関連付け
           const attachResponse = await fetch(`/api/questions/${questionId}/attachments`, {
@@ -157,8 +155,8 @@ export default function NewQuestionPage() {
       router.push(`/questions/${questionId}`)
 
     } catch (error) {
-      console.error('Question submission error:', error)
-      setErrors({ submit: '質問の投稿に失敗しました' })
+      console.error('Submission error:', error)
+      setErrors({ submit: '投稿に失敗しました' })
     } finally {
       setIsSubmitting(false)
     }
@@ -173,7 +171,7 @@ export default function NewQuestionPage() {
       <div className="min-h-screen bg-gray-50">
         <AppHeader breadcrumbItems={[
           { label: 'ホーム', href: '/questions' },
-          { label: '新規質問', current: true }
+          { label: '新規投稿', current: true }
         ]} />
         <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
           <CircularProgress />
@@ -185,7 +183,7 @@ export default function NewQuestionPage() {
 
   const breadcrumbItems = [
     { label: 'ホーム', href: '/questions' },
-    { label: '新規質問', current: true }
+    { label: '新規投稿', current: true }
   ]
 
   return (
@@ -193,6 +191,13 @@ export default function NewQuestionPage() {
       <AppHeader breadcrumbItems={breadcrumbItems} />
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">新規投稿</h1>
+          <p className="text-gray-600">
+            技術的な質問、検証依頼、調査依頼など、どのような内容でも投稿できます。
+            <br />IT、AI、Azureに関することであれば、お気軽にご相談ください。
+          </p>
+        </div>
 
         <form onSubmit={handleSubmit} className="bg-white shadow rounded-lg p-6">
           {errors.submit && (
@@ -203,7 +208,7 @@ export default function NewQuestionPage() {
 
           <div className="mb-6">
             <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-2">
-              質問タイトル *
+              タイトル *
             </label>
             <input
               type="text"
@@ -212,7 +217,7 @@ export default function NewQuestionPage() {
               onChange={(e) => setTitle(e.target.value)}
               className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 ${errors.title ? 'border-red-500' : 'border-gray-300'
                 }`}
-              placeholder="質問のタイトルを入力してください"
+              placeholder="例：○○について教えてください / ○○の検証をお願いします / ○○を調査してもらえますか"
             />
             {errors.title && (
               <p className="mt-1 text-sm text-red-600">{errors.title}</p>
@@ -221,8 +226,17 @@ export default function NewQuestionPage() {
 
           <div className="mb-6">
             <label htmlFor="content" className="block text-sm font-medium text-gray-700 mb-2">
-              質問内容 *
+              内容 *
             </label>
+            <div className="mb-2 text-sm text-gray-500">
+              <strong>投稿できる内容例：</strong>
+              <ul className="list-disc list-inside mt-1">
+                <li>技術的な質問（使い方、トラブルシューティングなど）</li>
+                <li>検証依頼（「○○について検証してもらえますか」など）</li>
+                <li>調査依頼（「○○の最新情報を調べてもらえますか」など）</li>
+                <li>IT、AI、Azureに関する相談事項</li>
+              </ul>
+            </div>
             <textarea
               id="content"
               rows={8}
@@ -230,7 +244,7 @@ export default function NewQuestionPage() {
               onChange={(e) => setContent(e.target.value)}
               className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 ${errors.content ? 'border-red-500' : 'border-gray-300'
                 }`}
-              placeholder="質問の詳細を入力してください"
+              placeholder="詳細な内容を入力してください。背景、現在の状況、期待する結果なども併せてお書きください。"
             />
             {errors.content && (
               <p className="mt-1 text-sm text-red-600">{errors.content}</p>

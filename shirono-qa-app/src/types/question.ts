@@ -84,6 +84,7 @@ export interface GetQuestionsQuery {
   page?: number
   limit?: number
   status?: QuestionStatus
+  statusArray?: QuestionStatus[]
   priority?: QuestionPriority
   authorId?: string
   groupId?: string

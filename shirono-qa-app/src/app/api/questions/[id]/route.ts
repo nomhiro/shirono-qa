@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { validateSession } from '@/lib/auth'
 import { getQuestion, updateQuestion, deleteQuestion, validateQuestionData } from '@/lib/questions'
+import { sendNotificationEmail, EmailType } from '@/lib/email'
+import { getUsers } from '@/lib/admin'
+import { QuestionStatus } from '@/types/question'
 
 export async function GET(
   request: NextRequest,
@@ -66,11 +69,7 @@ export async function GET(
       )
     }
 
-    console.log('Returning question with attachments:', {
-      questionId: question.id,
-      attachmentsCount: question.attachments?.length || 0,
-      attachments: question.attachments
-    })
+    // 質問の詳細情報を返す
 
     return NextResponse.json({
       success: true,
@@ -207,6 +206,60 @@ export async function PUT(
         },
         { status: 500 }
       )
+    }
+
+    // ステータス変更時のメール通知（非同期、エラーが発生しても更新は成功とする）
+    if (status !== undefined && (status === QuestionStatus.RESOLVED || status === QuestionStatus.REJECTED)) {
+      try {
+        // 質問の投稿者を取得
+        const { getCosmosService } = await import('@/lib/cosmos')
+        const cosmosService = getCosmosService()
+        const questionAuthor = await cosmosService.getItem('users', existingQuestion.authorId)
+        
+        const emailType = status === QuestionStatus.RESOLVED 
+          ? EmailType.QUESTION_RESOLVED 
+          : EmailType.QUESTION_REJECTED
+
+        // 質問投稿者への通知
+        if (questionAuthor) {
+          await sendNotificationEmail(
+            emailType,
+            questionAuthor.email,
+            {
+              question: result.question!,
+              author: questionAuthor,
+              resolver: status === QuestionStatus.RESOLVED ? authResult.user : undefined,
+              rejector: status === QuestionStatus.REJECTED ? authResult.user : undefined,
+              recipient: questionAuthor
+            }
+          )
+          // ステータス変更通知メール送信成功
+        }
+
+        // 管理者への通知（ステータス変更者が管理者でない場合のみ）
+        if (!authResult.user.isAdmin) {
+          const adminUsersResult = await getUsers({ isAdmin: true })
+          if (adminUsersResult.success && adminUsersResult.users) {
+            for (const admin of adminUsersResult.users) {
+              await sendNotificationEmail(
+                emailType,
+                admin.email,
+                {
+                  question: result.question!,
+                  author: questionAuthor,
+                  resolver: status === QuestionStatus.RESOLVED ? authResult.user : undefined,
+                  rejector: status === QuestionStatus.REJECTED ? authResult.user : undefined,
+                  recipient: admin
+                }
+              )
+              // 管理者への通知メール送信成功
+            }
+          }
+        }
+      } catch (emailError) {
+        console.error('Failed to send status change notification email:', emailError)
+        // メール送信エラーは質問更新の成功には影響しない
+      }
     }
 
     return NextResponse.json({

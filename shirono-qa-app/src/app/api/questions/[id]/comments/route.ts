@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { validateSession } from '../../../../../lib/auth'
 import { createComment, getCommentsByQuestion } from '../../../../../lib/answers'
 import { getQuestion, updateQuestionTimestamp } from '../../../../../lib/questions'
+import { sendNotificationEmail, EmailType } from '../../../../../lib/email'
+import { getUsers } from '../../../../../lib/admin'
 
 export async function GET(
   request: NextRequest,
@@ -133,7 +135,6 @@ export async function POST(
     }
 
     // コメント作成
-    console.log('Creating comment with content:', content, 'and', attachmentFiles.length, 'files')
     const commentResult = await createComment(body, questionId, validation.user.id)
     if (!commentResult.success) {
       console.error('Comment creation failed:', commentResult.error)
@@ -210,6 +211,50 @@ export async function POST(
 
     // 質問の更新日時を更新
     await updateQuestionTimestamp(questionId)
+
+    // メール通知を送信（非同期、エラーが発生してもコメント作成は成功とする）
+    try {
+      // 通知対象者を特定
+      const notificationTargets: Array<{email: string, user: unknown}> = []
+      
+      // 1. 質問の投稿者を取得（コメント投稿者でない場合のみ）
+      const { getCosmosService } = await import('../../../../../lib/cosmos')
+      const cosmosService = getCosmosService()
+      const questionAuthor = await cosmosService.getItem('users', questionResult.question.authorId)
+      
+      if (questionAuthor && questionAuthor.id !== validation.user.id) {
+        notificationTargets.push({ email: questionAuthor.email, user: questionAuthor })
+      }
+      
+      // 2. 管理者を取得（コメント投稿者でない場合のみ）
+      const adminUsersResult = await getUsers({ isAdmin: true })
+      if (adminUsersResult.success && adminUsersResult.users) {
+        for (const admin of adminUsersResult.users) {
+          if (admin.id !== validation.user.id && !notificationTargets.some(target => target.user.id === admin.id)) {
+            notificationTargets.push({ email: admin.email, user: admin })
+          }
+        }
+      }
+      
+      // 各対象者に通知メールを送信
+      for (const target of notificationTargets) {
+        await sendNotificationEmail(
+          EmailType.COMMENT_POSTED,
+          target.email,
+          {
+            question: questionResult.question,
+            author: questionAuthor,
+            commenter: validation.user,
+            comment: finalComment,
+            recipient: target.user
+          }
+        )
+        // コメント通知メール送信成功
+      }
+    } catch (emailError) {
+      console.error('Failed to send comment notification email:', emailError)
+      // メール送信エラーはコメント作成の成功には影響しない
+    }
 
     return NextResponse.json({
       success: true,

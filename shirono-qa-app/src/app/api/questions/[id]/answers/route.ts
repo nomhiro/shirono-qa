@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { validateSession } from '../../../../../lib/auth'
 import { createAnswer, getAnswersByQuestion } from '../../../../../lib/answers'
 import { getQuestion, updateQuestionTimestamp } from '../../../../../lib/questions'
+import { sendNotificationEmail, EmailType } from '../../../../../lib/email'
+// import { getUsers } from '../../../../../lib/admin' // 未使用のため一時的にコメントアウト
 
 export async function GET(
   request: NextRequest,
@@ -141,9 +143,7 @@ export async function POST(
     }
 
     // 回答作成
-    console.log('Creating answer with content:', content, 'and', attachmentFiles.length, 'files')
     const answerResult = await createAnswer(body, questionId, validation.user.id)
-    console.log('Answer creation result:', answerResult)
     if (!answerResult.success) {
       console.error('Answer creation failed:', answerResult.error)
       return NextResponse.json(
@@ -219,6 +219,32 @@ export async function POST(
 
     // 質問の更新日時を更新
     await updateQuestionTimestamp(questionId)
+
+    // 投稿者にメール通知を送信（非同期、エラーが発生しても回答作成は成功とする）
+    try {
+      // 投稿者を取得（IDで直接取得）
+      const { getCosmosService } = await import('../../../../../lib/cosmos')
+      const cosmosService = getCosmosService()
+      const questionAuthor = await cosmosService.getItem('users', questionResult.question.authorId)
+      
+      if (questionAuthor) {
+        await sendNotificationEmail(
+          EmailType.ANSWER_POSTED,
+          questionAuthor.email,
+          {
+            question: questionResult.question,
+            author: questionAuthor,
+            answerer: validation.user,
+            answer: finalAnswer,
+            recipient: questionAuthor
+          }
+        )
+        // メール送信成功
+      }
+    } catch (emailError) {
+      console.error('Failed to send answer notification email:', emailError)
+      // メール送信エラーは回答作成の成功には影響しない
+    }
 
     return NextResponse.json({
       success: true,

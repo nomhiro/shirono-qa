@@ -37,10 +37,8 @@ export async function POST(request: NextRequest) {
         maxAge: 6 * 60 * 60 // 6 hours
       })
       
-      console.log('Login successful, setting cookie')
       return response
     } else {
-      console.log('Login failed:', result.error)
       return NextResponse.json(
         {
           success: false,

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { useRouter, usePathname } from 'next/navigation'
 import Breadcrumb, { BreadcrumbItem } from './Breadcrumb'
 import UserMenu from './UserMenu'
@@ -17,9 +18,10 @@ interface User {
 interface AppHeaderProps {
   title?: string
   breadcrumbItems?: BreadcrumbItem[]
+  onUserLoaded?: (user: User) => void
 }
 
-export default function AppHeader({ title, breadcrumbItems = [] }: AppHeaderProps) {
+export default function AppHeader({ title, breadcrumbItems = [], onUserLoaded }: AppHeaderProps) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const router = useRouter()
@@ -43,7 +45,15 @@ export default function AppHeader({ title, breadcrumbItems = [] }: AppHeaderProp
 
   useEffect(() => {
     checkAuth()
-  }, [checkAuth])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // 初回のみ実行
+
+  // ユーザーが変更されたときにonUserLoadedを呼び出す
+  useEffect(() => {
+    if (user && onUserLoaded) {
+      onUserLoaded(user)
+    }
+  }, [user, onUserLoaded])
 
   // 自動的にパンくずリストを生成
   const generateBreadcrumbs = (): BreadcrumbItem[] => {
@@ -56,9 +66,9 @@ export default function AppHeader({ title, breadcrumbItems = [] }: AppHeaderProp
     ]
 
     if (pathname.startsWith('/questions/new')) {
-      items.push({ label: '新規質問', current: true })
+      items.push({ label: '新規投稿', current: true })
     } else if (pathname.startsWith('/questions/') && pathname !== '/questions') {
-      items.push({ label: '質問詳細', current: true })
+      items.push({ label: '投稿詳細', current: true })
     } else if (pathname.startsWith('/admin/users')) {
       items.push({ label: '管理', href: '/admin' })
       items.push({ label: 'ユーザー管理', current: true })
@@ -106,7 +116,7 @@ export default function AppHeader({ title, breadcrumbItems = [] }: AppHeaderProp
               href="/questions"
               className="text-xl font-bold text-blue-600 hover:text-blue-700"
             >
-              shiro no QA
+              shiro Assistant
             </Link>
 
             <div className="hidden md:block">
@@ -114,8 +124,24 @@ export default function AppHeader({ title, breadcrumbItems = [] }: AppHeaderProp
             </div>
           </div>
 
-          {/* 右側: ユーザーメニュー */}
-          <div className="flex items-center space-x-4">
+          {/* 右側: ブログリンク・ユーザーメニュー */}
+          <div className="flex items-center space-x-3">
+            {/* 技術ブログリンク */}
+            <a
+              href="https://zenn.dev/nomhiro"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-gray-400 hover:text-gray-600 transition-colors duration-200 p-1"
+              title="技術ブログ (Zenn)"
+            >
+              <Image
+                src="/icons/blog-icon.svg"
+                alt="ブログ"
+                width={20}
+                height={20}
+                className="w-5 h-5"
+              />
+            </a>
             <UserMenu user={user} />
           </div>
         </div>

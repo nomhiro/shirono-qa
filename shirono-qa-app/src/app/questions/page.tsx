@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Box, Typography, CircularProgress } from '@mui/material'
 import AppHeader from '@/components/AppHeader'
@@ -24,10 +24,10 @@ interface User {
 
 export default function QuestionsPage() {
   const [questions, setQuestions] = useState<Question[]>([])
-  const [_user, setUser] = useState<User | null>(null)
+  const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
-  const [statusFilter, setStatusFilter] = useState('すべて')
+  const [statusFilter, setStatusFilter] = useState('未回答・回答済み')
   const router = useRouter()
 
   const getStatusLabel = (status: string) => {
@@ -70,46 +70,71 @@ export default function QuestionsPage() {
     }
   }
 
-  const loadQuestions = async () => {
+  const loadQuestions = useCallback(async (forceRefresh = false) => {
     try {
-      const response = await fetch('/api/questions')
+      // キャッシュチェック
+      const cacheKey = `questions_${statusFilter}`
+      const cachedData = sessionStorage.getItem(cacheKey)
+      const cacheTime = sessionStorage.getItem(`${cacheKey}_time`)
+      const now = new Date().getTime()
+      
+      // キャッシュが有効な場合（5分以内）かつ強制更新でない場合
+      if (!forceRefresh && cachedData && cacheTime && now - parseInt(cacheTime) < 5 * 60 * 1000) {
+        setQuestions(JSON.parse(cachedData))
+        setIsLoading(false)
+        return
+      }
+      
+      // APIパラメータ構築
+      const params = new URLSearchParams()
+      if (statusFilter === '未回答・回答済み') {
+        params.append('status', 'unanswered,answered')
+      } else if (statusFilter !== 'すべて') {
+        const statusMap: { [key: string]: string } = {
+          '未回答': 'unanswered',
+          '回答済み': 'answered',
+          '解決済み': 'resolved'
+        }
+        const statusValue = statusMap[statusFilter]
+        if (statusValue) {
+          params.append('status', statusValue)
+        }
+      }
+      
+      const response = await fetch(`/api/questions?${params.toString()}`)
       if (response.ok) {
         const data = await response.json()
-        setQuestions(data.questions || [])
+        const questions = data.questions || []
+        setQuestions(questions)
+        
+        // キャッシュに保存
+        sessionStorage.setItem(cacheKey, JSON.stringify(questions))
+        sessionStorage.setItem(`${cacheKey}_time`, now.toString())
       }
-    } catch {
-      console.error('Failed to load questions')
+    } catch (error) {
+      console.error('Failed to load questions:', error)
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [statusFilter])
 
-  const checkAuth = async () => {
-    try {
-      const response = await fetch('/api/auth/me')
-      if (!response.ok) {
-        router.push('/')
-        return
-      }
-      const userData = await response.json()
-      setUser(userData.user)
-      loadQuestions()
-    } catch {
-      router.push('/')
-    }
-  }
-
+  // ステータスフィルター変更時とユーザー読み込み時にデータを再取得
   useEffect(() => {
-    // クライアントサイドでのみ実行
-    if (typeof window !== 'undefined') {
-      checkAuth()
+    if (user) {
+      setIsLoading(true)
+      loadQuestions()
     }
-  }, [])
+  }, [statusFilter, user, loadQuestions])
+
+  const handleUserLoaded = (userData: User) => {
+    setUser(userData)
+    setIsLoading(false)
+  }
 
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50">
-        <AppHeader title="質問一覧" />
+        <AppHeader title="投稿一覧" onUserLoaded={handleUserLoaded} />
         <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
           <CircularProgress />
           <Typography variant="body1" sx={{ ml: 2 }}>Loading...</Typography>
@@ -120,38 +145,45 @@ export default function QuestionsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <AppHeader title="質問一覧" />
-      
+      <AppHeader title="投稿一覧" onUserLoaded={handleUserLoaded} />
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
         <div className="mb-6 flex flex-col sm:flex-row gap-4">
           <input
             type="text"
-            placeholder="質問を検索..."
+            placeholder="投稿を検索..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
           />
-          
-          <button 
+
+          <button
             className="px-6 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             onClick={() => router.push('/questions/new')}
           >
-            新規質問
+            新規投稿
           </button>
         </div>
 
         <div className="mb-6">
-          <div className="flex flex-wrap gap-2">
-            {['すべて', '未回答', '回答済み', '解決済み'].map((status) => (
+          <div className="flex flex-wrap gap-2 items-center">
+            <button
+              onClick={() => loadQuestions(true)}
+              className="px-3 py-1 rounded-md text-sm bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors"
+              title="最新データを取得"
+            >
+              🔄 更新
+            </button>
+            <div className="w-px h-6 bg-gray-300 mx-2"></div>
+            {['未回答・回答済み', '解決済み', 'すべて'].map((status) => (
               <button
                 key={status}
                 onClick={() => setStatusFilter(status)}
-                className={`px-3 py-1 rounded-full text-sm ${
-                  statusFilter === status
+                className={`px-3 py-1 rounded-full text-sm ${statusFilter === status
                     ? 'bg-indigo-600 text-white'
                     : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                }`}
+                  }`}
               >
                 {status}
               </button>
@@ -164,25 +196,13 @@ export default function QuestionsPage() {
             // フィルター処理
             let filteredQuestions = questions
 
-            // ステータスフィルター
-            if (statusFilter !== 'すべて') {
-              const statusMap: { [key: string]: string } = {
-                '未回答': 'unanswered',
-                '回答済み': 'answered', 
-                '解決済み': 'resolved',
-                '却下': 'rejected',
-                'クローズ': 'closed'
-              }
-              const statusValue = statusMap[statusFilter]
-              if (statusValue) {
-                filteredQuestions = filteredQuestions.filter(q => q.status === statusValue)
-              }
-            }
+            // ステータスフィルター（サーバー側でフィルタリング済みなのでクライアント側では何もしない）
+            // API側で既にフィルタリングされているため、ここでの処理は不要
 
             // 検索フィルター
             if (searchQuery.trim()) {
               const query = searchQuery.toLowerCase()
-              filteredQuestions = filteredQuestions.filter(q => 
+              filteredQuestions = filteredQuestions.filter(q =>
                 q.title.toLowerCase().includes(query) ||
                 q.tags.some(tag => tag.toLowerCase().includes(query))
               )
@@ -191,7 +211,7 @@ export default function QuestionsPage() {
             if (filteredQuestions.length === 0) {
               return (
                 <div className="p-8 text-center text-gray-500">
-                  {questions.length === 0 ? '質問がありません' : '条件に一致する質問が見つかりません'}
+                  {questions.length === 0 ? '投稿がありません' : '条件に一致する投稿が見つかりません'}
                 </div>
               )
             }
@@ -199,40 +219,40 @@ export default function QuestionsPage() {
             return (
               <div className="divide-y divide-gray-200">
                 {filteredQuestions.map((question) => (
-                <div key={question.id} className="p-6 hover:bg-gray-50">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <h3 
-                        className="text-lg font-medium text-gray-900 mb-2 cursor-pointer hover:text-indigo-600"
-                        onClick={() => router.push(`/questions/${question.id}`)}
-                      >
-                        {question.title}
-                      </h3>
-                      <div className="flex items-center gap-4 text-sm text-gray-500">
-                        <span>作成日: {new Date(question.createdAt).toLocaleDateString()}</span>
-                        <span>更新日: {new Date(question.updatedAt).toLocaleDateString()}</span>
+                  <div key={question.id} className="p-6 hover:bg-gray-50">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <h3
+                          className="text-lg font-medium text-gray-900 mb-2 cursor-pointer hover:text-indigo-600"
+                          onClick={() => router.push(`/questions/${question.id}`)}
+                        >
+                          {question.title}
+                        </h3>
+                        <div className="flex items-center gap-4 text-sm text-gray-500">
+                          <span>作成日: {new Date(question.createdAt).toLocaleDateString()}</span>
+                          <span>更新日: {new Date(question.updatedAt).toLocaleDateString()}</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className={`px-2 py-1 rounded-full text-xs ${getStatusColorClass(question.status)}`}>
+                          {getStatusLabel(question.status)}
+                        </span>
+                        <span className={`px-2 py-1 rounded-full text-xs ${getPriorityColorClass(question.priority)}`}>
+                          {getPriorityLabel(question.priority)}
+                        </span>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className={`px-2 py-1 rounded-full text-xs ${getStatusColorClass(question.status)}`}>
-                        {getStatusLabel(question.status)}
-                      </span>
-                      <span className={`px-2 py-1 rounded-full text-xs ${getPriorityColorClass(question.priority)}`}>
-                        {getPriorityLabel(question.priority)}
-                      </span>
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {question.tags.map((tag) => (
+                        <span
+                          key={tag}
+                          className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs"
+                        >
+                          {tag}
+                        </span>
+                      ))}
                     </div>
                   </div>
-                  <div className="mt-2 flex flex-wrap gap-1">
-                    {question.tags.map((tag) => (
-                      <span
-                        key={tag}
-                        className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs"
-                      >
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                </div>
                 ))}
               </div>
             )
