@@ -3,6 +3,7 @@ import { validateSession } from '@/lib/auth'
 import { getQuestions, createQuestion, validateQuestionData } from '@/lib/questions'
 import { generateTags } from '@/lib/openai'
 import { QuestionStatus, QuestionPriority } from '@/types/question'
+import { sendEmail, EmailType } from '@/lib/email'
 
 export async function GET(request: NextRequest) {
   try {
@@ -176,6 +177,31 @@ export async function POST(request: NextRequest) {
     // タグを更新（別途処理）
     if (tags.length > 0) {
       result.question!.tags = tags
+    }
+
+    // 管理者にメール通知を送信（非同期、エラーが発生しても質問作成は成功とする）
+    if (result.question) {
+      try {
+        // 管理者ユーザーを取得する必要があるため、簡単なログ出力のみ
+        console.log(`New question posted: ${result.question.title} by ${authResult.user.username}`)
+        
+        // TODO: 管理者ユーザー取得とメール送信の実装
+        // const adminUsers = await getAdminUsers()
+        // for (const admin of adminUsers) {
+        //   await sendEmail(
+        //     admin.email,
+        //     EmailType.QUESTION_POSTED,
+        //     {
+        //       question: result.question,
+        //       author: authResult.user,
+        //       recipient: admin
+        //     }
+        //   )
+        // }
+      } catch (emailError) {
+        console.error('Failed to send email notification:', emailError)
+        // メール送信エラーは質問作成の成功には影響しない
+      }
     }
 
     return NextResponse.json({

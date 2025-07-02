@@ -31,11 +31,29 @@ jobs:
           npm install
           npm run build --if-present
       
+      - name: Prepare deployment package
+        working-directory: ./shirono-qa-app
+        run: |
+          # 本番環境に必要なファイルのみをstaging_dirにコピー
+          mkdir staging_dir
+          
+          # Next.jsビルド成果物をコピー
+          cp -r .next staging_dir/
+          cp -r public staging_dir/
+          
+          # パッケージ情報をコピー
+          cp package.json staging_dir/
+          cp package-lock.json staging_dir/
+          
+          # 本番環境用node_modulesをインストール
+          cd staging_dir
+          npm ci --production --ignore-scripts
+          
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
           name: node-app
-          path: .
+          path: ./shirono-qa-app/staging_dir
 
   deploy:
     runs-on: ubuntu-latest
