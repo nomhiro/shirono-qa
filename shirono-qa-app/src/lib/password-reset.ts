@@ -46,27 +46,22 @@ export function generatePasswordResetToken(): string {
 export function validatePasswordStrength(password: string): { valid: boolean; error?: string } {
   // 最小8文字
   if (password.length < 8) {
-    return { valid: false, error: 'Password must be at least 8 characters long' }
+    return { valid: false, error: 'パスワードは8文字以上である必要があります' }
   }
 
-  // 英小文字を含む
-  if (!/[a-z]/.test(password)) {
-    return { valid: false, error: 'Password must contain at least one lowercase letter' }
-  }
-
-  // 英大文字を含む
-  if (!/[A-Z]/.test(password)) {
-    return { valid: false, error: 'Password must contain at least one uppercase letter' }
+  // 英字を含む（大文字小文字問わず）
+  if (!/[a-zA-Z]/.test(password)) {
+    return { valid: false, error: 'パスワードには英字を含む必要があります' }
   }
 
   // 数字を含む
   if (!/[0-9]/.test(password)) {
-    return { valid: false, error: 'Password must contain at least one number' }
+    return { valid: false, error: 'パスワードには数字を含む必要があります' }
   }
 
   // 記号を含む
   if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
-    return { valid: false, error: 'Password must contain at least one special character' }
+    return { valid: false, error: 'パスワードには特殊文字（!@#$%^&*-_等）を含む必要があります' }
   }
 
   return { valid: true }
@@ -77,7 +72,7 @@ export function validatePasswordStrength(password: string): { valid: boolean; er
  */
 export async function createPasswordResetRequest(email: string): Promise<PasswordResetRequest> {
   try {
-    
+
     const cosmosService = getCosmosService()
 
     // ユーザーの存在確認
@@ -109,7 +104,7 @@ export async function createPasswordResetRequest(email: string): Promise<Passwor
         ...existingToken,
         isValid: false
       }
-      await cosmosService.replaceItem('password_reset_tokens', existingToken.id, invalidatedToken)
+      await cosmosService.updateItem('password_reset_tokens', existingToken.id, invalidatedToken)
     }
 
     // 新しいリセットトークンを生成
@@ -127,7 +122,7 @@ export async function createPasswordResetRequest(email: string): Promise<Passwor
 
     await cosmosService.createItem('password_reset_tokens', passwordResetToken)
 
-    
+
     return {
       success: true,
       token: resetToken,
@@ -149,7 +144,7 @@ export async function createPasswordResetRequest(email: string): Promise<Passwor
  */
 export async function validatePasswordResetToken(token: string): Promise<TokenValidation> {
   try {
-    
+
     const cosmosService = getCosmosService()
 
     // トークンを検索
@@ -184,7 +179,7 @@ export async function validatePasswordResetToken(token: string): Promise<TokenVa
       }
     }
 
-    
+
     return {
       valid: true,
       userId: resetToken.userId
@@ -204,7 +199,7 @@ export async function validatePasswordResetToken(token: string): Promise<TokenVa
  */
 export async function resetPassword(token: string, newPassword: string): Promise<PasswordResetResult> {
   try {
-    
+
     // パスワード強度を検証
     const passwordValidation = validatePasswordStrength(newPassword)
     if (!passwordValidation.valid) {
@@ -243,7 +238,7 @@ export async function resetPassword(token: string, newPassword: string): Promise
       passwordHash: hashedPassword
     }
 
-    await cosmosService.replaceItem('users', user.id, updatedUser)
+    await cosmosService.updateItem('users', user.id, updatedUser)
 
     // トークンを無効化
     const tokens = await cosmosService.queryItems<PasswordResetToken>(
@@ -258,10 +253,14 @@ export async function resetPassword(token: string, newPassword: string): Promise
         ...resetToken,
         isValid: false
       }
-      await cosmosService.replaceItem('password_reset_tokens', resetToken.id, invalidatedToken)
+      await cosmosService.updateItem('password_reset_tokens', resetToken.id, invalidatedToken)
+    } else {
+      return {
+        success: false,
+        error: 'Token not found'
+      }
     }
 
-    
     return {
       success: true,
       message: 'Password has been successfully reset'
@@ -281,7 +280,7 @@ export async function resetPassword(token: string, newPassword: string): Promise
  */
 export async function cleanupExpiredTokens(): Promise<{ success: boolean; deletedCount: number; error?: string }> {
   try {
-    
+
     const cosmosService = getCosmosService()
 
     // 期限切れのトークンを検索
@@ -298,7 +297,7 @@ export async function cleanupExpiredTokens(): Promise<{ success: boolean; delete
       deletedCount++
     }
 
-    
+
     return {
       success: true,
       deletedCount

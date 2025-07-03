@@ -77,7 +77,7 @@ export default function AdminUsersPage() {
       })
       
       if (!authResponse.ok) {
-        router.push('/')
+        router.push('/login')
         return
       }
       

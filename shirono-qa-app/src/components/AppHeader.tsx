@@ -31,13 +31,13 @@ export default function AppHeader({ title, breadcrumbItems = [], onUserLoaded }:
     try {
       const response = await fetch('/api/auth/me')
       if (!response.ok) {
-        router.push('/')
+        router.push('/login')
         return
       }
       const userData = await response.json()
       setUser(userData.user)
     } catch {
-      router.push('/')
+      router.push('/login')
     } finally {
       setLoading(false)
     }

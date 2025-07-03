@@ -8,11 +8,11 @@ export async function POST(request: NextRequest) {
     // 入力検証
     if (!token || !newPassword) {
       return NextResponse.json(
-        { 
-          error: { 
-            code: 'VALIDATION_ERROR', 
-            message: 'トークンと新しいパスワードが必要です' 
-          } 
+        {
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'トークンと新しいパスワードが必要です'
+          }
         },
         { status: 400 }
       )
@@ -21,10 +21,10 @@ export async function POST(request: NextRequest) {
     // トークンの形式検証（32文字のhex文字列）
     if (!/^[a-f0-9]{32}$/.test(token)) {
       return NextResponse.json(
-        { 
-          error: { 
-            code: 'INVALID_TOKEN', 
-            message: '無効なトークン形式です' 
+        {
+          error: {
+            code: 'INVALID_TOKEN',
+            message: '無効なトークン形式です'
           }
         },
         { status: 400 }
@@ -34,10 +34,10 @@ export async function POST(request: NextRequest) {
     // パスワードの複雑性検証
     if (typeof newPassword !== 'string' || newPassword.length < 8) {
       return NextResponse.json(
-        { 
-          error: { 
-            code: 'VALIDATION_ERROR', 
-            message: 'パスワードは8文字以上である必要があります' 
+        {
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'パスワードは8文字以上である必要があります'
           }
         },
         { status: 400 }
@@ -47,14 +47,14 @@ export async function POST(request: NextRequest) {
     // 英字、数字、特殊文字の要求
     const hasLetter = /[a-zA-Z]/.test(newPassword)
     const hasDigit = /\d/.test(newPassword)
-    const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(newPassword)
+    const hasSpecial = /[!@#$%^&*(),.?":{}|<>\-_]/.test(newPassword)
 
     if (!hasLetter || !hasDigit || !hasSpecial) {
       return NextResponse.json(
-        { 
-          error: { 
-            code: 'VALIDATION_ERROR', 
-            message: 'パスワードには英字、数字、特殊文字（!@#$%^&*等）を含む必要があります' 
+        {
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'パスワードには英字、数字、特殊文字（!@#$%^&*-_等）を含む必要があります'
           }
         },
         { status: 400 }
@@ -100,14 +100,10 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // パスワードリセット成功
     return NextResponse.json({
       success: true,
-      message: 'パスワードが正常にリセットされました。新しいパスワードでログインしてください。',
-      user: {
-        id: result.user.id,
-        username: result.user.username,
-        email: result.user.email
-      }
+      message: 'パスワードが正常にリセットされました。新しいパスワードでログインしてください。'
     })
 
   } catch (error) {

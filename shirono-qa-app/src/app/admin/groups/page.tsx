@@ -50,7 +50,7 @@ export default function GroupManagementPage() {
       })
 
       if (!authResponse.ok) {
-        router.push('/')
+        router.push('/login')
         return
       }
 
@@ -58,7 +58,7 @@ export default function GroupManagementPage() {
 
       // 管理者権限チェック
       if (!authResult.user?.isAdmin) {
-        router.push('/')
+        router.push('/questions')
         return
       }
 

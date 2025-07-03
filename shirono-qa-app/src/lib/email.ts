@@ -941,4 +941,71 @@ export const validateEmailConfig = (): { valid: boolean; error?: string } => {
   return { valid: true }
 }
 
+/**
+ * パスワードリセット用メール送信関数
+ */
+export async function sendPasswordResetEmail(
+  to: string,
+  resetUrl: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const emailService = getEmailService()
+    
+    const subject = '[shiro Assistant] パスワードリセットのご案内'
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #1976d2;">パスワードリセットのご案内</h2>
+        <p>shiro Assistantのパスワードリセットが要求されました。</p>
+        <p>以下のリンクをクリックして、新しいパスワードを設定してください：</p>
+        <div style="margin: 20px 0;">
+          <a href="${resetUrl}" style="background-color: #1976d2; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">パスワードをリセット</a>
+        </div>
+        <p style="color: #666; font-size: 14px;">
+          このリンクは24時間で有効期限が切れます。<br/>
+          パスワードリセットを要求していない場合は、このメールを無視してください。
+        </p>
+        <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;"/>
+        <p style="color: #999; font-size: 12px;">
+          shiro Assistant<br/>
+          このメールは自動送信されています。返信はしないでください。
+        </p>
+      </div>
+    `
+
+    const text = `
+パスワードリセットのご案内
+
+shiro Assistantのパスワードリセットが要求されました。
+
+以下のリンクをクリックして、新しいパスワードを設定してください：
+${resetUrl}
+
+このリンクは24時間で有効期限が切れます。
+パスワードリセットを要求していない場合は、このメールを無視してください。
+
+---
+shiro Assistant
+このメールは自動送信されています。返信はしないでください。
+    `
+
+    const mailOptions = {
+      from: `"shiro Assistant" <${emailService.fromAddress}>`,
+      to: to,
+      subject: subject,
+      text: text.trim(),
+      html: html
+    }
+
+    await emailService.transporter.sendMail(mailOptions)
+    return { success: true }
+    
+  } catch (error) {
+    console.error('Failed to send password reset email:', error)
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Unknown error' 
+    }
+  }
+}
+
 export default EmailService

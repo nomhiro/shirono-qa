@@ -46,7 +46,7 @@ export default function UserMenu({ user }: UserMenuProps) {
       })
       
       if (response.ok) {
-        router.push('/')
+        router.push('/login')
       } else {
         console.error('サインアウトに失敗しました')
       }

@@ -20,12 +20,12 @@ export default function NewQuestionPage() {
     try {
       const response = await fetch('/api/auth/me')
       if (!response.ok) {
-        router.push('/')
+        router.push('/login')
         return
       }
       const _userData = await response.json()
     } catch {
-      router.push('/')
+      router.push('/login')
     } finally {
       setIsLoading(false)
     }
