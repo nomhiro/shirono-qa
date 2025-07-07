@@ -950,7 +950,7 @@ export async function sendPasswordResetEmail(
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const emailService = getEmailService()
-    
+
     const subject = '[shiro Assistant] パスワードリセットのご案内'
     const html = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -998,12 +998,12 @@ shiro Assistant
 
     await emailService.transporter.sendMail(mailOptions)
     return { success: true }
-    
+
   } catch (error) {
     console.error('Failed to send password reset email:', error)
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : 'Unknown error' 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
     }
   }
 }
