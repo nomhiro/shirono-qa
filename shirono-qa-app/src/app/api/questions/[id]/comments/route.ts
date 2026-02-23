@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { validateSession } from '../../../../../lib/auth'
-import { createComment, getCommentsByQuestion } from '../../../../../lib/answers'
+import { createComment, getCommentsByQuestion, updateComment } from '../../../../../lib/answers'
 import { getQuestion, updateQuestionTimestamp } from '../../../../../lib/questions'
 import { sendNotificationEmail, EmailType } from '../../../../../lib/email'
 import { getUsers } from '../../../../../lib/admin'
@@ -186,23 +186,25 @@ export async function POST(
           })
         }
 
-        // コメントにファイルを関連付け
-        const attachResponse = await fetch(`${request.nextUrl.origin}/api/comments/${finalComment.id}/attachments`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Cookie': request.headers.get('cookie') || ''
-          },
-          body: JSON.stringify({
-            files: uploadResults
-          })
+        // コメントにファイルを直接関連付け（内部API呼び出しではなく直接DB更新）
+        const attachments = uploadResults.map(file => ({
+          fileName: file.fileName,
+          fileSize: file.size,
+          blobUrl: file.blobUrl,
+          contentType: file.contentType || 'application/octet-stream'
+        }))
+
+        const currentAttachments = finalComment.attachments || []
+        const updatedAttachments = [...currentAttachments, ...attachments]
+
+        const updateResult = await updateComment(finalComment.id, {
+          attachments: updatedAttachments
         })
 
-        if (attachResponse.ok) {
-          const attachResult = await attachResponse.json()
-          if (attachResult.success) {
-            finalComment = attachResult.comment
-          }
+        if (updateResult.success && updateResult.comment) {
+          finalComment = updateResult.comment
+        } else {
+          console.error('Failed to attach files to comment:', updateResult.error)
         }
       } catch (fileError) {
         console.warn('File upload failed for comment, but comment was created:', fileError)
