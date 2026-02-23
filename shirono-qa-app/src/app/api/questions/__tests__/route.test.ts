@@ -36,6 +36,8 @@ describe('/api/questions', () => {
         email: 'test@example.com',
         groupId: 'group-ts-ai',
         isAdmin: false,
+        createdAt: new Date(),
+        lastLoginAt: null,
       }
     })
     

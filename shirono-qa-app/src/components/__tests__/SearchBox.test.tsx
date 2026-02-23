@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import SearchBox from '../SearchBox'
+import { QuestionStatus, QuestionPriority } from '../../types/question'
 
 // Mock the search module
 jest.mock('../../lib/search', () => ({
@@ -22,8 +23,8 @@ const mockSearchResults = {
         title: 'JWT Authentication in Next.js',
         content: 'How to implement JWT authentication...',
         tags: ['next.js', 'authentication'],
-        status: 'answered',
-        priority: 'high',
+        status: QuestionStatus.ANSWERED,
+        priority: QuestionPriority.HIGH,
         authorId: 'user1',
         groupId: 'group1',
         attachments: [],
@@ -231,8 +232,8 @@ describe('SearchBox Component', () => {
     await waitFor(() => {
       expect(mockSearchQuestions).toHaveBeenCalledWith({
         q: 'JWT',
-        status: 'answered',
-        priority: 'high',
+        status: QuestionStatus.ANSWERED,
+        priority: QuestionPriority.HIGH,
         page: 1,
         limit: 20,
         sortBy: 'relevance',

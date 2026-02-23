@@ -3,10 +3,10 @@ import {
   findSimilarQuestions,
   generateAutoTags,
   getSearchSuggestions,
-  embedText,
   calculateSimilarity,
   highlightSearchTerms
 } from '../search'
+import { embedText } from '../openai'
 import { SearchSortField } from '../../types/search'
 import { testDataStore, mockCosmosService } from './test-helpers'
 

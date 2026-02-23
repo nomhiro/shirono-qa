@@ -7,8 +7,10 @@ import * as email from '@/lib/email'
 jest.mock('@/lib/password-reset')
 jest.mock('@/lib/email')
 
-const mockedPasswordReset = passwordReset as jest.Mocked<typeof passwordReset>
-const mockedEmail = email as jest.Mocked<typeof email>
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const mockedPasswordReset = passwordReset as any
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const mockedEmail = email as any
 
 describe('/api/auth/request-password-reset', () => {
   beforeEach(() => {

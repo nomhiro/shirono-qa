@@ -5,7 +5,8 @@ import * as passwordReset from '@/lib/password-reset'
 // モック関数
 jest.mock('@/lib/password-reset')
 
-const mockedPasswordReset = passwordReset as jest.Mocked<typeof passwordReset>
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const mockedPasswordReset = passwordReset as any
 
 describe('/api/auth/reset-password', () => {
   beforeEach(() => {

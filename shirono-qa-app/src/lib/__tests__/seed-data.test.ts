@@ -119,7 +119,7 @@ describe('Initial Data Seeding', () => {
       // 管理者のgroupIdが更新されていることを確認
       const adminUsers = await testDataStore.queryItems('users', 'SELECT * FROM c WHERE c.isAdmin = true')
       expect(adminUsers).toHaveLength(1)
-      expect(adminUsers[0].groupId).toBe(result.group?.id)
+      expect((adminUsers[0] as Record<string, unknown>).groupId).toBe(result.group?.id)
     })
 
     it('グループ作成時にエラーが発生した場合の処理', async () => {
@@ -153,7 +153,7 @@ describe('Initial Data Seeding', () => {
       expect(result.adminResult.success).toBe(false)
       // グループ作成は実行されない（管理者が必要なため）
       expect(result.groupResult.success).toBe(false)
-      expect(result.errors.some(e => e.includes('Admin creation failed'))).toBe(true)
+      expect(result.errors?.some(e => e.includes('Admin creation failed'))).toBe(true)
     })
 
     it('管理者が存在しグループが存在しない場合は、グループのみ作成する', async () => {

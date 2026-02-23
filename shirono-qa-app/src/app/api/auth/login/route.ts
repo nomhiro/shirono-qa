@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
         sessionToken: result.sessionToken
       })
 
-      response.cookies.set('session', result.sessionToken, {
+      response.cookies.set('session', result.sessionToken!, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'strict',

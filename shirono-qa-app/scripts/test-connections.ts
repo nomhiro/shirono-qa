@@ -21,10 +21,15 @@ import { join } from 'path'
 // .env.local ファイルを読み込み
 config({ path: join(process.cwd(), '.env.local') })
 
-import { getCosmosService, isCosmosEnabled } from '../src/lib/cosmos'
-import { getBlobStorageService, isBlobStorageEnabled } from '../src/lib/blob-storage'
+import { getCosmosService } from '../src/lib/cosmos'
+import { getBlobStorageService } from '../src/lib/blob-storage'
 import { embedText, generateTags, chatCompletion } from '../src/lib/openai'
-import { getEmailService, isEmailEnabled } from '../src/lib/email'
+import { getEmailService } from '../src/lib/email'
+
+// 各サービスの有効性チェック
+const isCosmosEnabled = (): boolean => !!process.env.COSMOS_DB_CONNECTION_STRING
+const isBlobStorageEnabled = (): boolean => !!process.env.AZURE_STORAGE_CONNECTION_STRING
+const isEmailEnabled = (): boolean => !!process.env.SMTP_HOST
 
 interface TestResult {
   service: string
@@ -34,7 +39,7 @@ interface TestResult {
 }
 
 class ConnectionTester {
-  private results: TestResult[] = []
+  results: TestResult[] = []
 
   private addResult(service: string, status: TestResult['status'], message: string, details?: any) {
     this.results.push({ service, status, message, details })
@@ -77,7 +82,7 @@ class ConnectionTester {
         await cosmosService.createItem('users', testItem)
         
         // テストアイテムの読み取り
-        const retrievedItem = await cosmosService.getItem('users', testItem.id)
+        const retrievedItem = await cosmosService.getItem<{id: string}>('users', testItem.id)
         
         // テストアイテムの削除
         await cosmosService.deleteItem('users', testItem.id)

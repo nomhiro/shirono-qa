@@ -2,9 +2,11 @@ export interface User {
   id: string
   username: string
   email: string
+  passwordHash?: string
   groupId: string
   isAdmin: boolean
   createdAt: Date
+  updatedAt?: Date
   lastLoginAt: Date | null
 }
 

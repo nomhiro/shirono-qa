@@ -112,7 +112,7 @@ export async function login(username: string, password: string): Promise<LoginRe
     }
 
     // パスワード検証
-    const isValidPassword = await verifyPassword(password, user.passwordHash)
+    const isValidPassword = await verifyPassword(password, user.passwordHash!)
     if (!isValidPassword) {
       return {
         success: false,

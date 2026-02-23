@@ -71,10 +71,11 @@ class CosmosService {
   /**
    * アイテム作成
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async createItem<T>(containerId: string, item: T): Promise<T> {
     try {
       const container = await this.getContainer(containerId)
-      const { resource } = await container.items.create(item)
+      const { resource } = await container.items.create(item as any)
       return resource as T
     } catch (error) {
       console.error(`Failed to create item in ${containerId}:`, error)
@@ -88,7 +89,8 @@ class CosmosService {
   async getItem<T>(containerId: string, id: string, partitionKey?: string): Promise<T | null> {
     try {
       const container = await this.getContainer(containerId)
-      const { resource } = await container.item(id, partitionKey || id).read<T>()
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { resource } = await container.item(id, partitionKey || id).read() as any
       return resource || null
     } catch (error) {
       if ((error as { code?: number }).code === 404) {
@@ -102,10 +104,11 @@ class CosmosService {
   /**
    * アイテム更新
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async updateItem<T>(containerId: string, id: string, item: T, partitionKey?: string): Promise<T> {
     try {
       const container = await this.getContainer(containerId)
-      const { resource } = await container.item(id, partitionKey || id).replace(item)
+      const { resource } = await container.item(id, partitionKey || id).replace(item as any)
       return resource as T
     } catch (error) {
       console.error(`Failed to update item ${id} in ${containerId}:`, error)

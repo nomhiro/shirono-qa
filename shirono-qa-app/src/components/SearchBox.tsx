@@ -50,7 +50,7 @@ export default function SearchBox({
         const result = await getSearchSuggestions(query)
         if (result.success) {
           setSuggestions(result.suggestions || [])
-          setShowSuggestions(result.suggestions?.length > 0)
+          setShowSuggestions((result.suggestions?.length ?? 0) > 0)
         }
       } catch (err) {
         console.error('Error getting suggestions:', err)

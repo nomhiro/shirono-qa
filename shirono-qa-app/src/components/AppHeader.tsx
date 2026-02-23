@@ -6,14 +6,7 @@ import Image from 'next/image'
 import { useRouter, usePathname } from 'next/navigation'
 import Breadcrumb, { BreadcrumbItem } from './Breadcrumb'
 import UserMenu from './UserMenu'
-
-interface User {
-  id: string
-  username: string
-  email: string
-  isAdmin: boolean
-  groupId: string
-}
+import { User } from '@/types/auth'
 
 interface AppHeaderProps {
   title?: string

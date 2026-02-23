@@ -40,7 +40,7 @@ describe('LoginForm Component', () => {
     const onSuccess = jest.fn()
     mockLogin.mockResolvedValue({
       success: true,
-      user: { id: '1', username: 'testuser', email: 'test@example.com' },
+      user: { id: '1', username: 'testuser', email: 'test@example.com', groupId: 'group-1', isAdmin: false, createdAt: new Date(), lastLoginAt: null },
       sessionToken: 'token123'
     })
     

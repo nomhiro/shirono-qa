@@ -92,6 +92,7 @@ const mockAnswers = [
     authorId: 'admin-user',
     attachments: [],
     createdAt: new Date('2024-01-15T11:00:00Z'),
+    updatedAt: new Date('2024-01-15T11:00:00Z'),
   }
 ]
 
@@ -101,6 +102,8 @@ const mockUser = {
   email: 'test@example.com',
   groupId: 'group-ts-ai',
   isAdmin: false,
+  createdAt: new Date(),
+  lastLoginAt: null,
 }
 
 describe('QuestionDetailPage', () => {
@@ -296,6 +299,7 @@ describe('QuestionDetailPage', () => {
           authorId: 'user-456',
           attachments: [],
           createdAt: new Date(),
+          updatedAt: new Date(),
         }
       })
 

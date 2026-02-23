@@ -1,4 +1,4 @@
-import { BlobServiceClient, ContainerClient } from '@azure/storage-blob'
+import { BlobServiceClient, ContainerClient, BlobSASPermissions } from '@azure/storage-blob'
 import { Readable } from 'stream'
 
 interface BlobConfig {
@@ -197,7 +197,7 @@ class BlobStorageService {
 
       const chunks: Buffer[] = []
       for await (const chunk of downloadResponse.readableStreamBody) {
-        chunks.push(chunk)
+        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk as unknown as Uint8Array))
       }
 
       return Buffer.concat(chunks)
@@ -365,7 +365,7 @@ class BlobStorageService {
 
       // SAS Token生成（実際の実装では適切な権限設定が必要）
       const sasUrl = await blobClient.generateSasUrl({
-        permissions: 'r', // 読み取り専用
+        permissions: BlobSASPermissions.parse('r'), // 読み取り専用
         expiresOn: new Date(Date.now() + expiresInMinutes * 60 * 1000)
       })
 

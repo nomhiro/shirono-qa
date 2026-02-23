@@ -532,37 +532,41 @@ export async function deleteGroup(groupId: string): Promise<{
 /**
  * ユーザーデータを検証
  */
-export function validateUserData(userData: UserCreateData | Record<string, unknown>, isUpdate = false): ValidationResult {
+export function validateUserData(userData: UserCreateData | Record<string, string>, isUpdate = false): ValidationResult {
   const errors: string[] = []
+  const username = (userData as UserCreateData).username ?? (userData as Record<string, string>).username
+  const email = (userData as UserCreateData).email ?? (userData as Record<string, string>).email
+  const password = (userData as UserCreateData).password ?? (userData as Record<string, string>).password
+  const groupId = (userData as UserCreateData).groupId ?? (userData as Record<string, string>).groupId
 
   // ユーザー名検証
-  if (!userData.username || userData.username.trim().length === 0) {
+  if (!username || username.trim().length === 0) {
     errors.push('Username is required')
-  } else if (userData.username.length < 3) {
+  } else if (username.length < 3) {
     errors.push('Username must be at least 3 characters long')
-  } else if (userData.username.length > 50) {
+  } else if (username.length > 50) {
     errors.push('Username must be 50 characters or less')
-  } else if (!/^[a-zA-Z0-9_-]+$/.test(userData.username)) {
+  } else if (!/^[a-zA-Z0-9_-]+$/.test(username)) {
     errors.push('Username can only contain letters, numbers, hyphens, and underscores')
   }
 
   // メール検証
-  if (!userData.email || userData.email.trim().length === 0) {
+  if (!email || email.trim().length === 0) {
     errors.push('Email is required')
-  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(userData.email)) {
+  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     errors.push('Invalid email format')
   }
 
   // パスワード検証（新規作成時のみ）
-  if (!isUpdate && userData.password) {
-    const passwordValidation = validatePassword(userData.password)
+  if (!isUpdate && password) {
+    const passwordValidation = validatePassword(password)
     if (!passwordValidation.valid) {
       errors.push(...passwordValidation.errors)
     }
   }
 
   // グループID検証
-  if (!userData.groupId || userData.groupId.trim().length === 0) {
+  if (!groupId || groupId.trim().length === 0) {
     errors.push('Group is required')
   }
 

@@ -3,6 +3,7 @@ import { validateSession } from '../../../../../lib/auth'
 import { createAnswer, getAnswersByQuestion, updateAnswer } from '../../../../../lib/answers'
 import { getQuestion, updateQuestionTimestamp } from '../../../../../lib/questions'
 import { sendNotificationEmail, EmailType } from '../../../../../lib/email'
+import { User } from '@/types/auth'
 // import { getUsers } from '../../../../../lib/admin' // 未使用のため一時的にコメントアウト
 
 export async function GET(
@@ -227,8 +228,8 @@ export async function POST(
       // 投稿者を取得（IDで直接取得）
       const { getCosmosService } = await import('../../../../../lib/cosmos')
       const cosmosService = getCosmosService()
-      const questionAuthor = await cosmosService.getItem('users', questionResult.question.authorId)
-      
+      const questionAuthor = await cosmosService.getItem<User>('users', questionResult.question.authorId)
+
       if (questionAuthor) {
         await sendNotificationEmail(
           EmailType.ANSWER_POSTED,

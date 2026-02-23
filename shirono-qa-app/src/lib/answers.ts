@@ -368,7 +368,7 @@ export async function getCommentById(commentId: string): Promise<{ success: bool
 
 export async function updateComment(
   commentId: string,
-  data: { content?: string; attachments?: unknown[] }
+  data: { content?: string; attachments?: Comment['attachments'] }
 ): Promise<{ success: boolean; comment?: Comment; error?: string }> {
   try {
     const cosmosService = getCosmosService()

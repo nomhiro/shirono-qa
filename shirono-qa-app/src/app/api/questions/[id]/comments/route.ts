@@ -4,6 +4,7 @@ import { createComment, getCommentsByQuestion, updateComment } from '../../../..
 import { getQuestion, updateQuestionTimestamp } from '../../../../../lib/questions'
 import { sendNotificationEmail, EmailType } from '../../../../../lib/email'
 import { getUsers } from '../../../../../lib/admin'
+import { User } from '@/types/auth'
 
 export async function GET(
   request: NextRequest,
@@ -217,13 +218,13 @@ export async function POST(
     // メール通知を送信（非同期、エラーが発生してもコメント作成は成功とする）
     try {
       // 通知対象者を特定
-      const notificationTargets: Array<{email: string, user: unknown}> = []
+      const notificationTargets: Array<{email: string, user: User}> = []
       
       // 1. 質問の投稿者を取得（コメント投稿者でない場合のみ）
       const { getCosmosService } = await import('../../../../../lib/cosmos')
       const cosmosService = getCosmosService()
-      const questionAuthor = await cosmosService.getItem('users', questionResult.question.authorId)
-      
+      const questionAuthor = await cosmosService.getItem<User>('users', questionResult.question.authorId)
+
       if (questionAuthor && questionAuthor.id !== validation.user.id) {
         notificationTargets.push({ email: questionAuthor.email, user: questionAuthor })
       }
@@ -245,7 +246,7 @@ export async function POST(
           target.email,
           {
             question: questionResult.question,
-            author: questionAuthor,
+            author: questionAuthor ?? undefined,
             commenter: validation.user,
             comment: finalComment,
             recipient: target.user

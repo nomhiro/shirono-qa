@@ -28,6 +28,8 @@ const mockAdminUser = {
   email: 'admin@example.com',
   groupId: 'group-admin',
   isAdmin: true,
+  createdAt: new Date(),
+  lastLoginAt: null,
 }
 
 const mockGroups = [
