@@ -1,0 +1,45 @@
+name: PR Preview Environment
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+    branches:
+      - main
+
+jobs:
+  # PRが開かれた・更新された時にプレビュー環境をデプロイ
+  deploy_preview:
+    if: github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    name: プレビュー環境デプロイ
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+          lfs: false
+
+      - name: Deploy Preview
+        id: builddeploy
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_LIVELY_ISLAND_019C31500 }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          action: "upload"
+          app_location: "./shirono-qa-app"
+          api_location: ""
+          output_location: "build"
+
+  # PRが閉じられた時にプレビュー環境をクリーンアップ
+  close_preview:
+    if: github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    name: プレビュー環境クローズ
+
+    steps:
+      - name: Close Preview
+        id: closepullrequest
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_LIVELY_ISLAND_019C31500 }}
+          action: "close"
