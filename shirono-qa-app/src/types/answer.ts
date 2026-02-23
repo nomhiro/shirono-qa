@@ -18,6 +18,7 @@ export interface Comment {
   authorId: string
   attachments: Attachment[]
   createdAt: Date
+  updatedAt?: Date
 }
 
 export interface CreateAnswerRequest {

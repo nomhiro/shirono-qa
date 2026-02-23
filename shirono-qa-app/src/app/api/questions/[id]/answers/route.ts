@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { validateSession } from '../../../../../lib/auth'
-import { createAnswer, getAnswersByQuestion } from '../../../../../lib/answers'
+import { createAnswer, getAnswersByQuestion, updateAnswer } from '../../../../../lib/answers'
 import { getQuestion, updateQuestionTimestamp } from '../../../../../lib/questions'
 import { sendNotificationEmail, EmailType } from '../../../../../lib/email'
 // import { getUsers } from '../../../../../lib/admin' // 未使用のため一時的にコメントアウト
@@ -194,23 +194,25 @@ export async function POST(
           })
         }
 
-        // 回答にファイルを関連付け
-        const attachResponse = await fetch(`${request.nextUrl.origin}/api/answers/${finalAnswer.id}/attachments`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Cookie': request.headers.get('cookie') || ''
-          },
-          body: JSON.stringify({
-            files: uploadResults
-          })
+        // 回答にファイルを直接関連付け（内部API呼び出しではなく直接DB更新）
+        const attachments = uploadResults.map(file => ({
+          fileName: file.fileName,
+          fileSize: file.size,
+          blobUrl: file.blobUrl,
+          contentType: file.contentType || 'application/octet-stream'
+        }))
+
+        const currentAttachments = finalAnswer.attachments || []
+        const updatedAttachments = [...currentAttachments, ...attachments]
+
+        const updateResult = await updateAnswer(finalAnswer.id, {
+          attachments: updatedAttachments
         })
 
-        if (attachResponse.ok) {
-          const attachResult = await attachResponse.json()
-          if (attachResult.success) {
-            finalAnswer = attachResult.answer
-          }
+        if (updateResult.success && updateResult.answer) {
+          finalAnswer = updateResult.answer
+        } else {
+          console.error('Failed to attach files to answer:', updateResult.error)
         }
       } catch (fileError) {
         console.warn('File upload failed for answer, but answer was created:', fileError)
