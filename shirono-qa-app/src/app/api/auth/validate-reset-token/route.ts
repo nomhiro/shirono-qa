@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { validatePasswordResetToken } from '@/lib/password-reset'
+import { User } from '@/types/auth'
 
 export async function GET(request: NextRequest) {
   try {
@@ -46,7 +47,7 @@ export async function GET(request: NextRequest) {
     const cosmosService = getCosmosService()
     
     try {
-      const users = await cosmosService.queryItems(
+      const users = await cosmosService.queryItems<User>(
         'users',
         'SELECT * FROM c WHERE c.id = @userId',
         [{ name: '@userId', value: result.userId }]

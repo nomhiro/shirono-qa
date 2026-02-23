@@ -20,10 +20,13 @@ describe('FileUpload Component', () => {
     previews: {},
     errors: {},
     isUploading: false,
+    setIsUploading: jest.fn(),
     addFile: jest.fn(),
     removeFile: jest.fn(),
     clearFiles: jest.fn(),
-    uploadFiles: jest.fn(),
+    formatFileSize: jest.fn((bytes: number) => `${bytes} Bytes`),
+    isValid: true,
+    totalSize: 0,
   }
 
   beforeEach(() => {

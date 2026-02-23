@@ -12,17 +12,20 @@ const mockAttachments = [
   {
     fileName: 'document.pdf',
     fileSize: 1024000,
-    blobUrl: 'https://blob.storage/document.pdf'
+    blobUrl: 'https://blob.storage/document.pdf',
+    contentType: 'application/octet-stream'
   },
   {
     fileName: 'image.jpg',
     fileSize: 512000,
-    blobUrl: 'https://blob.storage/image.jpg'
+    blobUrl: 'https://blob.storage/image.jpg',
+    contentType: 'application/octet-stream'
   },
   {
     fileName: 'presentation.pptx',
     fileSize: 2048000,
-    blobUrl: 'https://blob.storage/presentation.pptx'
+    blobUrl: 'https://blob.storage/presentation.pptx',
+    contentType: 'application/octet-stream'
   }
 ]
 
@@ -183,11 +186,11 @@ describe('AttachmentList Component', () => {
 
   it('should show correct file type indicators', () => {
     const diverseAttachments = [
-      { fileName: 'doc.pdf', fileSize: 1000, blobUrl: 'url1' },
-      { fileName: 'image.jpg', fileSize: 1000, blobUrl: 'url2' },
-      { fileName: 'sheet.xlsx', fileSize: 1000, blobUrl: 'url3' },
-      { fileName: 'presentation.pptx', fileSize: 1000, blobUrl: 'url4' },
-      { fileName: 'text.txt', fileSize: 1000, blobUrl: 'url5' },
+      { fileName: 'doc.pdf', fileSize: 1000, blobUrl: 'url1', contentType: 'application/octet-stream' },
+      { fileName: 'image.jpg', fileSize: 1000, blobUrl: 'url2', contentType: 'application/octet-stream' },
+      { fileName: 'sheet.xlsx', fileSize: 1000, blobUrl: 'url3', contentType: 'application/octet-stream' },
+      { fileName: 'presentation.pptx', fileSize: 1000, blobUrl: 'url4', contentType: 'application/octet-stream' },
+      { fileName: 'text.txt', fileSize: 1000, blobUrl: 'url5', contentType: 'application/octet-stream' },
     ]
 
     render(<AttachmentList attachments={diverseAttachments} />)
@@ -208,9 +211,9 @@ describe('AttachmentList Component', () => {
 
   it('should format file sizes correctly', () => {
     const sizeTestAttachments = [
-      { fileName: 'small.txt', fileSize: 500, blobUrl: 'url1' },
-      { fileName: 'medium.pdf', fileSize: 1500000, blobUrl: 'url2' },
-      { fileName: 'large.zip', fileSize: 50000000, blobUrl: 'url3' },
+      { fileName: 'small.txt', fileSize: 500, blobUrl: 'url1', contentType: 'application/octet-stream' },
+      { fileName: 'medium.pdf', fileSize: 1500000, blobUrl: 'url2', contentType: 'application/octet-stream' },
+      { fileName: 'large.zip', fileSize: 50000000, blobUrl: 'url3', contentType: 'application/octet-stream' },
     ]
 
     render(<AttachmentList attachments={sizeTestAttachments} />)

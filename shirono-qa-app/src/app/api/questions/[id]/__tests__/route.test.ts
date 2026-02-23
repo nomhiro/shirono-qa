@@ -47,6 +47,8 @@ describe('/api/questions/[id]', () => {
         email: 'test@example.com',
         groupId: 'group-ts-ai',
         isAdmin: false,
+        createdAt: new Date(),
+        lastLoginAt: null,
       }
     })
   })
@@ -60,7 +62,7 @@ describe('/api/questions/[id]', () => {
         }
       })
 
-      const response = await GET(request, { params: { id: 'question-123' } })
+      const response = await GET(request, { params: Promise.resolve({ id: 'question-123' }) })
       const data = await response.json()
 
       expect(response.status).toBe(200)
@@ -78,7 +80,7 @@ describe('/api/questions/[id]', () => {
         }
       })
 
-      const response = await GET(request, { params: { id: 'non-existent' } })
+      const response = await GET(request, { params: Promise.resolve({ id: 'non-existent' }) })
       const data = await response.json()
 
       expect(response.status).toBe(404)
@@ -101,7 +103,7 @@ describe('/api/questions/[id]', () => {
         }
       })
 
-      const response = await GET(request, { params: { id: 'question-other-group' } })
+      const response = await GET(request, { params: Promise.resolve({ id: 'question-other-group' }) })
       const data = await response.json()
 
       expect(response.status).toBe(403)
@@ -117,6 +119,8 @@ describe('/api/questions/[id]', () => {
           email: 'admin@example.com',
           groupId: 'group-admin',
           isAdmin: true,
+          createdAt: new Date(),
+          lastLoginAt: null,
         }
       })
 
@@ -134,7 +138,7 @@ describe('/api/questions/[id]', () => {
         }
       })
 
-      const response = await GET(request, { params: { id: 'question-other-group' } })
+      const response = await GET(request, { params: Promise.resolve({ id: 'question-other-group' }) })
       const data = await response.json()
 
       expect(response.status).toBe(200)
@@ -159,7 +163,7 @@ describe('/api/questions/[id]', () => {
         body: JSON.stringify(updateData)
       })
 
-      const response = await PUT(request, { params: { id: 'question-123' } })
+      const response = await PUT(request, { params: Promise.resolve({ id: 'question-123' }) })
       const data = await response.json()
 
       expect(response.status).toBe(200)
@@ -179,6 +183,8 @@ describe('/api/questions/[id]', () => {
           email: 'admin@example.com',
           groupId: 'group-ts-ai',
           isAdmin: true,
+          createdAt: new Date(),
+          lastLoginAt: null,
         }
       })
 
@@ -195,7 +201,7 @@ describe('/api/questions/[id]', () => {
         body: JSON.stringify(updateData)
       })
 
-      const response = await PUT(request, { params: { id: 'question-123' } })
+      const response = await PUT(request, { params: Promise.resolve({ id: 'question-123' }) })
       const data = await response.json()
 
       expect(response.status).toBe(200)
@@ -212,6 +218,8 @@ describe('/api/questions/[id]', () => {
           email: 'other@example.com',
           groupId: 'group-ts-ai',
           isAdmin: false,
+          createdAt: new Date(),
+          lastLoginAt: null,
         }
       })
 
@@ -228,7 +236,7 @@ describe('/api/questions/[id]', () => {
         body: JSON.stringify(updateData)
       })
 
-      const response = await PUT(request, { params: { id: 'question-123' } })
+      const response = await PUT(request, { params: Promise.resolve({ id: 'question-123' }) })
       const data = await response.json()
 
       expect(response.status).toBe(403)
@@ -250,7 +258,7 @@ describe('/api/questions/[id]', () => {
         body: JSON.stringify(invalidData)
       })
 
-      const response = await PUT(request, { params: { id: 'question-123' } })
+      const response = await PUT(request, { params: Promise.resolve({ id: 'question-123' }) })
       const data = await response.json()
 
       expect(response.status).toBe(400)
@@ -268,7 +276,7 @@ describe('/api/questions/[id]', () => {
         }
       })
 
-      const response = await DELETE(request, { params: { id: 'question-123' } })
+      const response = await DELETE(request, { params: Promise.resolve({ id: 'question-123' }) })
       const data = await response.json()
 
       expect(response.status).toBe(200)
@@ -289,6 +297,8 @@ describe('/api/questions/[id]', () => {
           email: 'admin@example.com',
           groupId: 'group-ts-ai',
           isAdmin: true,
+          createdAt: new Date(),
+          lastLoginAt: null,
         }
       })
 
@@ -299,7 +309,7 @@ describe('/api/questions/[id]', () => {
         }
       })
 
-      const response = await DELETE(request, { params: { id: 'question-123' } })
+      const response = await DELETE(request, { params: Promise.resolve({ id: 'question-123' }) })
       const data = await response.json()
 
       expect(response.status).toBe(200)
@@ -315,6 +325,8 @@ describe('/api/questions/[id]', () => {
           email: 'other@example.com',
           groupId: 'group-ts-ai',
           isAdmin: false,
+          createdAt: new Date(),
+          lastLoginAt: null,
         }
       })
 
@@ -325,7 +337,7 @@ describe('/api/questions/[id]', () => {
         }
       })
 
-      const response = await DELETE(request, { params: { id: 'question-123' } })
+      const response = await DELETE(request, { params: Promise.resolve({ id: 'question-123' }) })
       const data = await response.json()
 
       expect(response.status).toBe(403)
@@ -340,7 +352,7 @@ describe('/api/questions/[id]', () => {
         }
       })
 
-      const response = await DELETE(request, { params: { id: 'non-existent' } })
+      const response = await DELETE(request, { params: Promise.resolve({ id: 'non-existent' }) })
       const data = await response.json()
 
       expect(response.status).toBe(404)

@@ -23,6 +23,8 @@ const mockAdminUser = {
   email: 'admin@example.com',
   groupId: 'group-admin',
   isAdmin: true,
+  createdAt: new Date(),
+  lastLoginAt: null,
 }
 
 const mockRegularUser = {
@@ -31,6 +33,8 @@ const mockRegularUser = {
   email: 'test@example.com',
   groupId: 'group-ts-ai',
   isAdmin: false,
+  createdAt: new Date(),
+  lastLoginAt: null,
 }
 
 describe('/api/admin/users', () => {

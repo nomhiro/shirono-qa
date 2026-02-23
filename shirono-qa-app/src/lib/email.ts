@@ -1,7 +1,7 @@
 import nodemailer from 'nodemailer'
 import { Question, QuestionStatus } from '@/types/question'
 import { Answer } from '@/types/answer'
-import { Comment } from '@/types/comment'
+import { Comment } from '@/types/answer'
 import { User } from '@/types/auth'
 
 export interface EmailConfig {
@@ -53,8 +53,8 @@ export interface EmailResult {
 }
 
 class EmailService {
-  private transporter: nodemailer.Transporter
-  private fromAddress: string
+  transporter: nodemailer.Transporter
+  fromAddress: string
 
   constructor(config: EmailConfig) {
     this.fromAddress = config.user

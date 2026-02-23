@@ -9,7 +9,8 @@ describe('AttachmentList Component - Simple Tests', () => {
     {
       fileName: 'document.pdf',
       fileSize: 1024000,
-      blobUrl: 'https://blob.storage/document.pdf'
+      blobUrl: 'https://blob.storage/document.pdf',
+      contentType: 'application/octet-stream'
     }
   ]
 

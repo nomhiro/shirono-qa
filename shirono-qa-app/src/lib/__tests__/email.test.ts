@@ -1,4 +1,5 @@
 import { sendNotificationEmail, EmailType } from '../email'
+import { QuestionStatus, QuestionPriority } from '@/types/question'
 
 // nodemailerをモック
 jest.mock('nodemailer', () => ({
@@ -50,8 +51,8 @@ describe('Email Notification Service', () => {
         content: 'Azure Functions の環境変数設定方法を教えてください',
         authorId: 'user-1',
         groupId: 'group-1',
-        priority: 'medium' as const,
-        status: 'unanswered' as const,
+        priority: QuestionPriority.MEDIUM,
+        status: QuestionStatus.UNANSWERED,
         tags: ['Azure', 'Functions'],
         attachments: [],
         createdAt: new Date('2024-01-15'),
@@ -63,7 +64,9 @@ describe('Email Notification Service', () => {
         username: 'testuser',
         email: 'test@example.com',
         groupId: 'group-1',
-        isAdmin: false
+        isAdmin: false,
+        createdAt: new Date(),
+        lastLoginAt: null
       }
 
       const mockAdmin = {
@@ -71,7 +74,9 @@ describe('Email Notification Service', () => {
         username: 'admin',
         email: 'admin@example.com',
         groupId: 'group-admin',
-        isAdmin: true
+        isAdmin: true,
+        createdAt: new Date(),
+        lastLoginAt: null
       }
 
       mockSendMail.mockResolvedValue({ messageId: 'test-message-id' })
@@ -103,12 +108,12 @@ describe('Email Notification Service', () => {
         content: 'こちらのエラーについて調べてください',
         authorId: 'user-1',
         groupId: 'group-1',
-        priority: 'high' as const,
-        status: 'unanswered' as const,
+        priority: QuestionPriority.HIGH,
+        status: QuestionStatus.UNANSWERED,
         tags: ['Error', 'Debug'],
         attachments: [
-          { fileName: 'error.log', fileSize: 1024, blobUrl: 'https://blob.storage/error.log' },
-          { fileName: 'screenshot.png', fileSize: 2048, blobUrl: 'https://blob.storage/screenshot.png' }
+          { fileName: 'error.log', fileSize: 1024, blobUrl: 'https://blob.storage/error.log', contentType: 'application/octet-stream' },
+          { fileName: 'screenshot.png', fileSize: 2048, blobUrl: 'https://blob.storage/screenshot.png', contentType: 'application/octet-stream' }
         ],
         createdAt: new Date('2024-01-15'),
         updatedAt: new Date('2024-01-15')
@@ -119,7 +124,9 @@ describe('Email Notification Service', () => {
         username: 'testuser',
         email: 'test@example.com',
         groupId: 'group-1',
-        isAdmin: false
+        isAdmin: false,
+        createdAt: new Date(),
+        lastLoginAt: null
       }
 
       const mockAdmin = {
@@ -127,7 +134,9 @@ describe('Email Notification Service', () => {
         username: 'admin',
         email: 'admin@example.com',
         groupId: 'group-admin',
-        isAdmin: true
+        isAdmin: true,
+        createdAt: new Date(),
+        lastLoginAt: null
       }
 
       mockSendMail.mockResolvedValue({ messageId: 'test-message-id' })
@@ -161,8 +170,8 @@ describe('Email Notification Service', () => {
         content: 'Azure Functions の環境変数設定方法を教えてください',
         authorId: 'user-1',
         groupId: 'group-1',
-        priority: 'medium' as const,
-        status: 'answered' as const,
+        priority: QuestionPriority.MEDIUM,
+        status: QuestionStatus.ANSWERED,
         tags: ['Azure', 'Functions'],
         attachments: [],
         createdAt: new Date('2024-01-15'),
@@ -175,7 +184,8 @@ describe('Email Notification Service', () => {
         content: 'Azure Functions の環境変数は以下の方法で設定できます...',
         authorId: 'admin-1',
         attachments: [],
-        createdAt: new Date('2024-01-16')
+        createdAt: new Date('2024-01-16'),
+        updatedAt: new Date('2024-01-16')
       }
 
       const mockAnswerer = {
@@ -183,7 +193,9 @@ describe('Email Notification Service', () => {
         username: 'admin',
         email: 'admin@example.com',
         groupId: 'group-admin',
-        isAdmin: true
+        isAdmin: true,
+        createdAt: new Date(),
+        lastLoginAt: null
       }
 
       const mockQuestioner = {
@@ -191,7 +203,9 @@ describe('Email Notification Service', () => {
         username: 'testuser',
         email: 'test@example.com',
         groupId: 'group-1',
-        isAdmin: false
+        isAdmin: false,
+        createdAt: new Date(),
+        lastLoginAt: null
       }
 
       mockSendMail.mockResolvedValue({ messageId: 'test-message-id' })
@@ -226,8 +240,8 @@ describe('Email Notification Service', () => {
         content: 'Azure Functions の環境変数設定方法を教えてください',
         authorId: 'user-1',
         groupId: 'group-1',
-        priority: 'medium' as const,
-        status: 'answered' as const,
+        priority: QuestionPriority.MEDIUM,
+        status: QuestionStatus.ANSWERED,
         tags: ['Azure', 'Functions'],
         attachments: [],
         createdAt: new Date('2024-01-15'),
@@ -249,7 +263,9 @@ describe('Email Notification Service', () => {
         username: 'testuser',
         email: 'test@example.com',
         groupId: 'group-1',
-        isAdmin: false
+        isAdmin: false,
+        createdAt: new Date(),
+        lastLoginAt: null
       }
 
       const mockAdmin = {
@@ -257,7 +273,9 @@ describe('Email Notification Service', () => {
         username: 'admin',
         email: 'admin@example.com',
         groupId: 'group-admin',
-        isAdmin: true
+        isAdmin: true,
+        createdAt: new Date(),
+        lastLoginAt: null
       }
 
       mockSendMail.mockResolvedValue({ messageId: 'test-message-id' })
@@ -292,8 +310,8 @@ describe('Email Notification Service', () => {
         content: 'Azure Functions の環境変数設定方法を教えてください',
         authorId: 'user-1',
         groupId: 'group-1',
-        priority: 'medium' as const,
-        status: 'resolved' as const,
+        priority: QuestionPriority.MEDIUM,
+        status: QuestionStatus.RESOLVED,
         tags: ['Azure', 'Functions'],
         attachments: [],
         createdAt: new Date('2024-01-15'),
@@ -306,7 +324,9 @@ describe('Email Notification Service', () => {
         username: 'testuser',
         email: 'test@example.com',
         groupId: 'group-1',
-        isAdmin: false
+        isAdmin: false,
+        createdAt: new Date(),
+        lastLoginAt: null
       }
 
       const mockAdmin = {
@@ -314,7 +334,9 @@ describe('Email Notification Service', () => {
         username: 'admin',
         email: 'admin@example.com',
         groupId: 'group-admin',
-        isAdmin: true
+        isAdmin: true,
+        createdAt: new Date(),
+        lastLoginAt: null
       }
 
       mockSendMail.mockResolvedValue({ messageId: 'test-message-id' })
@@ -346,8 +368,8 @@ describe('Email Notification Service', () => {
         content: '業務に関わる機密情報が含まれています',
         authorId: 'user-1',
         groupId: 'group-1',
-        priority: 'medium' as const,
-        status: 'rejected' as const,
+        priority: QuestionPriority.MEDIUM,
+        status: QuestionStatus.REJECTED,
         tags: [],
         attachments: [],
         createdAt: new Date('2024-01-15'),
@@ -359,7 +381,9 @@ describe('Email Notification Service', () => {
         username: 'testuser',
         email: 'test@example.com',
         groupId: 'group-1',
-        isAdmin: false
+        isAdmin: false,
+        createdAt: new Date(),
+        lastLoginAt: null
       }
 
       const mockAdmin = {
@@ -367,7 +391,9 @@ describe('Email Notification Service', () => {
         username: 'admin',
         email: 'admin@example.com',
         groupId: 'group-admin',
-        isAdmin: true
+        isAdmin: true,
+        createdAt: new Date(),
+        lastLoginAt: null
       }
 
       mockSendMail.mockResolvedValue({ messageId: 'test-message-id' })
@@ -418,8 +444,8 @@ describe('Email Notification Service', () => {
         content: 'Test content',
         authorId: 'user-1',
         groupId: 'group-1',
-        priority: 'medium' as const,
-        status: 'unanswered' as const,
+        priority: QuestionPriority.MEDIUM,
+        status: QuestionStatus.UNANSWERED,
         tags: [],
         attachments: [],
         createdAt: new Date(),
@@ -431,8 +457,8 @@ describe('Email Notification Service', () => {
         'test@example.com',
         {
           question: mockQuestion,
-          author: { id: 'user-1', username: 'test', email: 'test@example.com', groupId: 'group-1', isAdmin: false },
-          recipient: { id: 'admin-1', username: 'admin', email: 'test@example.com', groupId: 'group-admin', isAdmin: true }
+          author: { id: 'user-1', username: 'test', email: 'test@example.com', groupId: 'group-1', isAdmin: false, createdAt: new Date(), lastLoginAt: null },
+          recipient: { id: 'admin-1', username: 'admin', email: 'test@example.com', groupId: 'group-admin', isAdmin: true, createdAt: new Date(), lastLoginAt: null }
         }
       )
 
@@ -463,8 +489,8 @@ describe('Email Notification Service', () => {
         content: 'Test content',
         authorId: 'user-1',
         groupId: 'group-1',
-        priority: 'high' as const,
-        status: 'unanswered' as const,
+        priority: QuestionPriority.HIGH,
+        status: QuestionStatus.UNANSWERED,
         tags: ['Test', 'HTML'],
         attachments: [],
         createdAt: new Date('2024-01-15'),
@@ -478,8 +504,8 @@ describe('Email Notification Service', () => {
         'test@example.com',
         {
           question: mockQuestion,
-          author: { id: 'user-1', username: 'test', email: 'test@example.com', groupId: 'group-1', isAdmin: false },
-          recipient: { id: 'admin-1', username: 'admin', email: 'test@example.com', groupId: 'group-admin', isAdmin: true }
+          author: { id: 'user-1', username: 'test', email: 'test@example.com', groupId: 'group-1', isAdmin: false, createdAt: new Date(), lastLoginAt: null },
+          recipient: { id: 'admin-1', username: 'admin', email: 'test@example.com', groupId: 'group-admin', isAdmin: true, createdAt: new Date(), lastLoginAt: null }
         }
       )
 

@@ -49,14 +49,8 @@ export default function QuestionForm({ mode, question, onSuccess, onCancel }: Qu
     try {
       if (mode === 'create') {
 
-        // This component should not be used directly - user session required
+        // Note: このコンポーネントは非推奨。認証付きAPIルートを使用してください
         throw new Error('QuestionForm component is deprecated - use authenticated API routes instead')
-
-        if (result.success) {
-          onSuccess()
-        } else {
-          setErrors({ general: result.error || 'Failed to create question' })
-        }
       } else {
         const updateData = {
           title,

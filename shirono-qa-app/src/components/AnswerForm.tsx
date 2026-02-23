@@ -45,14 +45,8 @@ export default function AnswerForm({ mode, answer, onSuccess, onCancel }: Answer
     try {
       if (mode === 'create') {
 
-        // Note: This component is deprecated, use the main question detail page instead
+        // Note: このコンポーネントは非推奨。質問詳細ページを使用してください
         throw new Error('AnswerForm component is deprecated. Use question detail page for posting answers.')
-
-        if (result.success) {
-          onSuccess()
-        } else {
-          setErrors({ general: result.error || 'Failed to create answer' })
-        }
       } else {
         const updateData = {
           content

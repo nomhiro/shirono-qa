@@ -20,6 +20,7 @@ export interface Answer {
   authorId: string
   attachments: Attachment[]
   createdAt: Date
+  updatedAt?: Date
 }
 
 export interface Comment {
@@ -90,6 +91,11 @@ export interface GetQuestionsQuery {
   authorId?: string
   groupId?: string
   search?: string
+  startDate?: Date
+  endDate?: Date
+  sortBy?: string
+  sortOrder?: 'asc' | 'desc'
+  continuationToken?: string
 }
 
 export interface GetQuestionsResult {
@@ -97,5 +103,6 @@ export interface GetQuestionsResult {
   questions?: Question[]
   total?: number
   page?: number
+  continuationToken?: string
   error?: string
 }

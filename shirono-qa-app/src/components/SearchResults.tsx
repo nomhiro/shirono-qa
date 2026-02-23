@@ -192,18 +192,18 @@ export default function SearchResults({ results, loading = false }: SearchResult
       {results.total && results.total > (results.limit || 20) && (
         <div className="flex items-center justify-center space-x-2 pt-6">
           <button
-            disabled={results.page === 1}
+            disabled={(results.page ?? 1) === 1}
             className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Previous
           </button>
           
           <span className="px-3 py-1 text-sm text-gray-600">
-            Page {results.page} of {Math.ceil(results.total / (results.limit || 20))}
+            Page {results.page ?? 1} of {Math.ceil((results.total ?? 0) / (results.limit || 20))}
           </span>
           
           <button
-            disabled={results.page >= Math.ceil(results.total / (results.limit || 20))}
+            disabled={(results.page ?? 1) >= Math.ceil((results.total ?? 0) / (results.limit || 20))}
             className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Next

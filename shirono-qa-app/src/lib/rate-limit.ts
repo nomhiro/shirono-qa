@@ -77,10 +77,9 @@ function getClientIdentifier(request: NextRequest): string {
   const realIp = request.headers.get('x-real-ip')
   const clientIp = request.headers.get('x-client-ip')
   
-  const ip = forwardedFor?.split(',')[0]?.trim() || 
-            realIp || 
-            clientIp || 
-            request.ip || 
+  const ip = forwardedFor?.split(',')[0]?.trim() ||
+            realIp ||
+            clientIp ||
             'unknown'
   
   return ip

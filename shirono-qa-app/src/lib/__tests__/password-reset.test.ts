@@ -85,10 +85,10 @@ describe('Password Reset Service', () => {
       expect(result.success).toBe(true)
       
       // password_reset_tokensコンテナにトークンが保存されることを確認
-      const tokens = await testDataStore.queryItems('password_reset_tokens', 'SELECT * FROM c')
+      const tokens = await testDataStore.queryItems<{ userId: string; token: string }>('password_reset_tokens', 'SELECT * FROM c')
       expect(tokens).toHaveLength(1)
-      expect(tokens[0].userId).toBe('user-123')
-      expect(tokens[0].token).toBe(result.token)
+      expect((tokens[0] as Record<string, unknown>).userId).toBe('user-123')
+      expect((tokens[0] as Record<string, unknown>).token).toBe(result.token)
     })
 
     it('既存のリセットトークンがある場合は無効化する', async () => {
@@ -101,9 +101,9 @@ describe('Password Reset Service', () => {
       expect(secondResult.success).toBe(true)
 
       // 古いトークンは無効化され、新しいトークンのみが有効
-      const tokens = await testDataStore.queryItems('password_reset_tokens', 'SELECT * FROM c WHERE c.isValid = true')
+      const tokens = await testDataStore.queryItems<{ token: string }>('password_reset_tokens', 'SELECT * FROM c WHERE c.isValid = true')
       expect(tokens).toHaveLength(1)
-      expect(tokens[0].token).toBe(secondResult.token)
+      expect((tokens[0] as Record<string, unknown>).token).toBe(secondResult.token)
     })
 
     it('データベースエラー時に適切にエラーを処理する', async () => {
@@ -231,11 +231,11 @@ describe('Password Reset Service', () => {
       expect(mockHashPassword).toHaveBeenCalledWith('NewPassword123!')
 
       // ユーザーのパスワードハッシュが更新されることを確認
-      const updatedUser = await testDataStore.getItem('users', 'user-123')
+      const updatedUser = await testDataStore.getItem('users', 'user-123') as Record<string, unknown>
       expect(updatedUser.passwordHash).toBe('new-hashed-password')
 
       // トークンが無効化されることを確認
-      const usedToken = await testDataStore.getItem('password_reset_tokens', 'token-123')
+      const usedToken = await testDataStore.getItem('password_reset_tokens', 'token-123') as Record<string, unknown>
       expect(usedToken.isValid).toBe(false)
     })
 
@@ -345,7 +345,7 @@ describe('Password Reset Service', () => {
         })
 
         const result = await resetPassword(token, password)
-        expect(result.success).toBe(true, `Password "${password}" should be valid`)
+        expect(result.success).toBe(true)
       }
     })
   })

@@ -18,7 +18,9 @@ describe('Login API Logic', () => {
       username: 'testuser',
       email: 'test@example.com',
       groupId: 'group1',
-      isAdmin: false
+      isAdmin: false,
+      createdAt: new Date(),
+      lastLoginAt: null,
     }
 
     mockLogin.mockResolvedValue({

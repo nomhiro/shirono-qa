@@ -1,7 +1,7 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import QuestionForm from '../QuestionForm'
-import { QuestionPriority } from '../../types/question'
+import { QuestionPriority, QuestionStatus } from '../../types/question'
 
 // Mock the questions module
 jest.mock('../../lib/questions', () => ({
@@ -54,7 +54,7 @@ describe('QuestionForm Component', () => {
           priority: QuestionPriority.HIGH,
           authorId: 'user1',
           groupId: 'group1',
-          status: 'unanswered',
+          status: QuestionStatus.UNANSWERED,
           tags: [],
           attachments: [],
           createdAt: new Date(),
@@ -93,7 +93,7 @@ describe('QuestionForm Component', () => {
       priority: QuestionPriority.MEDIUM,
       authorId: 'user1',
       groupId: 'group1',
-      status: 'unanswered' as const,
+      status: QuestionStatus.UNANSWERED,
       tags: [],
       attachments: [],
       createdAt: new Date(),

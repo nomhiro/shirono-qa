@@ -4,6 +4,7 @@ import { getQuestion, updateQuestion, deleteQuestion, validateQuestionData } fro
 import { sendNotificationEmail, EmailType } from '@/lib/email'
 import { getUsers } from '@/lib/admin'
 import { QuestionStatus } from '@/types/question'
+import { User } from '@/types/auth'
 
 export async function GET(
   request: NextRequest,
@@ -214,7 +215,7 @@ export async function PUT(
         // 質問の投稿者を取得
         const { getCosmosService } = await import('@/lib/cosmos')
         const cosmosService = getCosmosService()
-        const questionAuthor = await cosmosService.getItem('users', existingQuestion.authorId)
+        const questionAuthor = await cosmosService.getItem<User>('users', existingQuestion.authorId)
         
         const emailType = status === QuestionStatus.RESOLVED 
           ? EmailType.QUESTION_RESOLVED 
@@ -246,7 +247,7 @@ export async function PUT(
                 admin.email,
                 {
                   question: result.question!,
-                  author: questionAuthor,
+                  author: questionAuthor ?? undefined,
                   resolver: status === QuestionStatus.RESOLVED ? authResult.user : undefined,
                   rejector: status === QuestionStatus.REJECTED ? authResult.user : undefined,
                   recipient: admin

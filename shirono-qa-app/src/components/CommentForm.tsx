@@ -48,16 +48,8 @@ export default function CommentForm({ answerId, onSuccess, onCancel }: CommentFo
 
     try {
 
-      // Note: This component is deprecated, use the main question detail page instead
+      // Note: このコンポーネントは非推奨。質問詳細ページを使用してください
       throw new Error('CommentForm component is deprecated. Use question detail page for posting comments.')
-
-      if (result.success) {
-        onSuccess()
-        setContent('')
-        setAttachments([])
-      } else {
-        setErrors({ general: result.error || 'Failed to create comment' })
-      }
     } catch {
       setErrors({ general: 'An unexpected error occurred' })
     } finally {

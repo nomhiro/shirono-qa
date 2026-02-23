@@ -71,7 +71,9 @@ export async function createInitialAdmin(): Promise<SeedResult> {
       email: 'nomhiro1204@gmail.com',
       passwordHash: hashedPassword,
       groupId: 'group-admin', // 後でTS-AIグループに更新される
-      isAdmin: true
+      isAdmin: true,
+      createdAt: new Date(),
+      lastLoginAt: null
     }
 
     await cosmosService.createItem('users', adminUser)
@@ -137,7 +139,7 @@ export async function createInitialGroup(): Promise<SeedResult> {
         groupId: tsAiGroup.id
       }
 
-      await cosmosService.replaceItem('users', updatedAdmin.id, updatedAdmin)
+      await cosmosService.updateItem('users', updatedAdmin.id, updatedAdmin)
     }
 
     return {
